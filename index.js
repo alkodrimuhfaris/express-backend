@@ -262,32 +262,7 @@ app.delete('/items/:id', (req, res)=>{
     })
 }) 
 
-//menampilkan data dengan id tertentu
-app.get('items/:id', (req, res)=>{
-    db.query(`SELECT * FROM items WHERE id = ${req.params.id}`,(err0, result0, field0)=>{
-        let choosenData = result0[0]
-        if (result0[0]){   
-            if(!err){
-                res.status(201).send({
-                    success: true,
-                    message: `Item ${deletedData.name} on id ${req.params.id} has been deleted`
-                })
-            }else{
-                console.log(err);
-                res.status(500).send({
-                    success: false,
-                    message: 'Internal Server Error'
-                })
-            }
-        }else {
-            res.status(201).send({
-                success: true,
-                message: 'The id you choose is invalid!',
-            })
-        }
 
-    })
-}) 
 
 
 app.listen(8080, ()=> {
