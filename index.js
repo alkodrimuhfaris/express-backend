@@ -66,6 +66,7 @@ app.get('/items', (req,res)=>{
     const query = `SELECT * FROM items WHERE ${searchKey} LIKE '%${searchValue}%' LIMIT ${limit} OFFSET ${offset}`
     console.log(query)
     db.query(query, (err, result, field)=>{
+    console.log(result)
         if(!err){
             const pageInfo = {
                 count: 0,
@@ -76,7 +77,8 @@ app.get('/items', (req,res)=>{
                 prefLink: null,
             }
             if(result.length){
-                const query = `SELECT COUNT (*) AS count FROM items WHERE ${searchKey} LIKE '%${searchValue}%' LIMIT ${limit} OFFSET ${offset}`
+                const query = `SELECT COUNT(*) AS count FROM items WHERE ${searchKey} LIKE '%${searchValue}%'`
+                console.log(query)
                 db.query(query, (err, data, fields)=>{
                     console.log(data)
                     const {count} = data[0]
@@ -122,14 +124,153 @@ app.get('/items', (req,res)=>{
 
 //mereplace keseluruhan data dengan id tertentu
 app.put('/items/:id', (req, res)=>{
+    const {name, price, description} = req.body 
+    db.query(`SELECT * FROM items WHERE id = ${req.params.id}`,(err0, result0, field0)=>{
+        let oldData = result0[0];
+        if (result0[0]){
+            if(name&&Number(price)&&description){
+                db.query(`UPDATE items SET name='${name}', price=${Number(price)}, description='${description}' WHERE id=${req.params.id}`, (err, result, field)=>{
+                    if(!err){
+                        res.status(201).send({
+                            success: true,
+                            oldData: oldData,
+                            message: 'item has been updated',
+                            newData: req.body
+                        })
+                    }else{
+                        console.log(err);
+                        res.status(500).send({
+                            success: false,
+                            message: 'Internal Server Error'
+                        })
+                    }
+                })
+            }else{
+                res.status(201).send({
+                    success: true,
+                    choosenData: oldData,
+                    message: 'There is no updates on data. All field must be filled with the correct data type!'
+                })
+            }
+        }else{
+            res.status(201).send({
+                success: true,
+                message: 'The id you choose is invalid!',
+            })
+        }
+    })
+}) 
+
+//mengupdate sebagian dengan id tertentu
+app.patch('/items/:id', (req, res)=>{
     const {name, price, description} = req.body
-    if(name&&Number(price)&&description){
-        db.query(`UPDATE items SET name='${name}', price=${price}, description='${description}' WHERE id=${req.params.id}`, (err, result, field)=>{
+    db.query(`SELECT * FROM items WHERE id = ${req.params.id}`,(err0, result0, field0)=>{
+        if (result0[0]){
+            let oldData = result0[0];
+            let fillName = '';
+            let fillPrice = '';
+            let fillDesc = '';
+            let commaFirst = '';
+            let commaSecond = '';
+            if(name||Number(price)||description){
+                if(name){
+                    fillName =`name='${name}'`
+                }
+                if(Number(price)){
+                    fillPrice = `price=${Number(price)}`
+                }
+                if(description){
+                    fillDesc = `description='${description}'`
+                }
+                if (fillName&&fillPrice&&fillDesc){
+                    commaFirst =',';
+                    commaSecond =',';
+                }else if (fillName&&fillPrice&&!fillDesc || fillName&&!fillPrice&&fillDesc){
+                    commaFirst = ',';
+                }else if (!fillName&&fillPrice&&fillDesc){
+                    commaSecond = ',';
+                }
+                db.query(`UPDATE items SET ${fillName}${commaFirst}${fillPrice}${commaSecond} ${fillDesc} WHERE id=${req.params.id}`, (err, result, field)=>{
+                    if(!err){
+                        const propertyUpdatted = {};
+                        if(name){
+                            propertyUpdatted.newName= name;
+                        };
+                        if(Number(price)){
+                            propertyUpdatted.newPrice= price;
+                        };
+                        if(description){
+                            propertyUpdatted.newDescription= description;
+                        };
+                        res.status(201).send({
+                            success: true,
+                            oldData: oldData,
+                            message: `Your item's property has been updated`,
+                            propertyUpdatted
+                        })
+                    }else{
+                        console.log(err);
+                        res.status(500).send({
+                            success: false,
+                            message: 'Internal Server Error'
+                        })
+                    }
+                })
+            }else{
+                res.status(201).send({
+                    success: true,
+                    choosenData: oldData,
+                    message: 'There is No Change on Choosen Data!'
+                })
+            }
+        }else{
+            res.status(201).send({
+                success: true,
+                message: 'The id you choose is invalid!',
+            })
+        }
+    })
+}) 
+
+//mendelete data dengan id tertentu
+app.delete('/items/:id', (req, res)=>{
+    db.query(`SELECT * FROM items WHERE id = ${req.params.id}`,(err0, result0, field0)=>{
+        let selectedData = result0[0]
+        if (result0[0]){   
+            db.query(`DELETE FROM items WHERE id = ${req.params.id}`, (err, result, field)=>{
+                if(!err){
+                    res.status(201).send({
+                        success: true,
+                        message: `Item with id ${req.params.id} has been selected`,
+                        selectedData
+                    })
+                }else{
+                    console.log(err);
+                    res.status(500).send({
+                        success: false,
+                        message: 'Internal Server Error'
+                    })
+                }
+            })
+        }else {
+            res.status(201).send({
+                success: true,
+                message: 'The id you choose is invalid!',
+            })
+        }
+
+    })
+}) 
+
+//menampilkan data dengan id tertentu
+app.get('items/:id', (req, res)=>{
+    db.query(`SELECT * FROM items WHERE id = ${req.params.id}`,(err0, result0, field0)=>{
+        let choosenData = result0[0]
+        if (result0[0]){   
             if(!err){
                 res.status(201).send({
                     success: true,
-                    message: 'item has been updated',
-                    data: req.body
+                    message: `Item ${deletedData.name} on id ${req.params.id} has been deleted`
                 })
             }else{
                 console.log(err);
@@ -138,23 +279,15 @@ app.put('/items/:id', (req, res)=>{
                     message: 'Internal Server Error'
                 })
             }
-        })
-    }else{
-        res.status(201).send({
-            success: true,
-            message: 'All field must be filled with the correct data type!'
-        })
-    }
+        }else {
+            res.status(201).send({
+                success: true,
+                message: 'The id you choose is invalid!',
+            })
+        }
+
+    })
 }) 
-
-//mengupdate sebagian dengan id tertentu
-app.patch('/items/:id')
-
-//mendelete data dengan id tertentu
-app.delete('/items/:id') 
-
-//menampilkan data dengan id tertentu
-app.get('items/:id') 
 
 
 app.listen(8080, ()=> {
