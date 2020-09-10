@@ -30,7 +30,16 @@ Built with NodeJs using the ExpressJs Framework. Express.js is a web application
 <h5>/items</h5>
 {req.params.page:Number(page requested), req.params.limit:Number(Limit Items per Page)}
 
+<h5>/items/:id</h5> //to see items on :id
+
 
 <h3><li>PUT (TO EDIT OLD ITEM)</h3>
 <h5>/items/:id</h5>
-{req.params.page:Number(page requested), req.params.limit:Number(Limit Items per Page)}
+{req.body.name:'Product Name', req.body.price:Number(Product Price), req.body.description:'Product Description'}
+
+<h3><li>PATCH (TO PATCHING OLD ITEM)</h3>
+<h5>/items/:id</h5>
+{req.body.name:'Product Name', req.body.price:Number(Product Price), req.body.description:'Product Description'}
+
+<h3><li>DELETE (TO PATCHING OLD ITEM)</h3>
+<h5>/items/:id</h5> //delete items on :id
