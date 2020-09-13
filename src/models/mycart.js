@@ -84,7 +84,7 @@ module.exports = {
   updateMycartModel: (data, id, cb) => {
     db.query(`
     UPDATE ${tables}
-    SET ${data}, date_updated=NOW()
+    SET ${data} date_updated=NOW()
     WHERE id=${id}`,
     (err, result, _field) => {
       cb(err, result)
