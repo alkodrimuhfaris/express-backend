@@ -62,10 +62,5 @@ module.exports = {
     (err, result, _field) => {
       cb(err, result)
     })
-  },
-  sortItemModel: (colom, sort, cb) => {
-    db.query(`SELECT * FROM ${tables} ORDER BY ${colom} ${sort}`, (err, result, field) => {
-      cb(err, result, field)
-    })
   }
 }

@@ -12,34 +12,69 @@ module.exports = {
       cb(err, result)
     })
   },
-  viewCategoriesModel: (searchValue, limit, offset, cb) => {
+  viewCategoriesModel: (searchKey, searchValue, colom, sort, limit, offset, cb) => {
     db.query(`
-    SELECT *
+    SELECT ${tables}.id as id, ${tables}.name as category,
+    ${tables}.created_at as 'created at', items.id as item_id, price, items.name as product,
+    COUNT(${tables}.id) as 'total product'
     FROM ${tables}
-    WHERE name
+    LEFT JOIN items
+    ON ${tables}.id = items.category_id
+    WHERE ${searchKey}
     LIKE '%${searchValue}%'
-    LIMIT ${limit}
-    OFFSET ${offset}`,
+    GROUP BY ${tables}.id
+    ORDER BY ${colom} ${sort}
+    LIMIT ${offset}, ${limit}`,
     (err, result, _field) => {
       cb(err, result)
     })
   },
-  viewCountCategoriesModel: (searchValue, cb) => {
+  viewCountCategoriesModel: (searchKey, searchValue, cb) => {
     db.query(`
-    SELECT
-    COUNT(*) AS count
-    FROM ${tables}
-    WHERE name
-    LIKE '%${searchValue}%'`,
+    SELECT COUNT(newTable.id) AS 'count'
+    FROM (
+      SELECT ${tables}.id as id, ${tables}.name as category, items.name as product, created_at, count(${tables}.id) as 'total product'
+      FROM ${tables}
+      LEFT JOIN items
+      ON ${tables}.id = items.category_id
+      WHERE ${searchKey}
+      LIKE '%${searchValue}%'
+      GROUP BY ${tables}.id
+    ) as newTable`,
     (err, result, _field) => {
       cb(err, result)
     })
   },
-  getCategoryModel: (id, cb) => {
+  getCategoryModel: (id, colom, sort, limit, offset, cb) => {
     db.query(`
-    SELECT *
+    SELECT ${tables}.name as category,
+    items.name as product,
+    items.id as item_id, price,
+    description, items.created_at as 'date added'
     FROM ${tables}
-    WHERE id = ${id}`, (err, result, _field) => {
+    LEFT JOIN items
+    ON ${tables}.id = items.category_id
+    WHERE ${tables}.id = ${id}
+    ORDER BY ${colom} ${sort}
+    LIMIT ${offset}, ${limit}`,
+    (err, result, _field) => {
+      cb(err, result)
+    })
+  },
+  getCategoryCountModel: (id, cb) => {
+    db.query(`
+    SELECT COUNT(newTable.product) as count
+    FROM (
+      SELECT ${tables}.name as category,
+      items.name as product,
+      items.id as item_id, price,
+      description, items.created_at as 'date added'
+      FROM ${tables}
+      LEFT JOIN items
+      ON ${tables}.id = items.category_id
+      WHERE ${tables}.id = ${id}
+    ) AS newTable`,
+    (err, result, _field) => {
       cb(err, result)
     })
   },

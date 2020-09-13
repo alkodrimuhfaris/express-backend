@@ -147,7 +147,8 @@ module.exports = {
         item[1] = sanitize(item[1])
         return (Number(item[1]) > 0) ? `${item[0]}=${Number(item[1])}` : `${item[0]}='${item[1]}'`
       })
-      updateItemModel(data, `id = ${id}`, (err, result) => {
+      const whereId = `id = ${id}`
+      updateItemModel(data, whereId, (err, result) => {
         if (result.affectedRows) {
           res.status(201).send({
             success: true,
@@ -178,8 +179,9 @@ module.exports = {
         item[1] = sanitize(item[1])
         return (Number(item[1]) > 0) ? `${item[0]}=${Number(item[1])}` : `${item[0]}='${item[1]}'`
       })
+      const whereId = `id = ${id}`
       console.log(data)
-      updateItemModel(data, `id = ${id}`, (err, result) => {
+      updateItemModel(data, whereId, (err, result) => {
         if (!err) {
           res.status(201).send({
             success: true,

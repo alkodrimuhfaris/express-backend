@@ -14,6 +14,7 @@ const {
   viewCategoriesModel,
   viewCountCategoriesModel,
   getCategoryModel,
+  getCategoryCountModel,
   updateCategoriesModel,
   deleteCategoryModel
 
@@ -56,11 +57,16 @@ module.exports = {
     }
   },
   viewCategories: (req, res) => {
-    let { page = 1, limit = 5, search = '' } = req.query
+    let { page = 1, limit = 5, search = { 'categories.name': '' }, sort = { 'categories.id': 0 } } = req.query
+    const searchKey = Object.keys(search)[0] || 'categories.name'
+    const searchValue = Object.values(search)[0] || ''
+    const sortKey = Object.keys(sort)[0] || 'categories.id'
+    let sortValue = Number(Object.values(sort)[0]) || 0
+    !sortValue ? sortValue = 'ASC' : sortValue = 'DESC'
     Number(limit) && limit > 0 ? limit = Number(limit) : limit = 5
     Number(page) && page > 0 ? page = Number(page) : page = 1
     const offset = (page - 1) * limit
-    viewCategoriesModel(search, limit, offset, (err, result) => {
+    viewCategoriesModel(searchKey, searchValue, sortKey, sortValue, limit, offset, (err, result) => {
       if (!err) {
         const pageInfo = {
           count: 0,
@@ -71,7 +77,7 @@ module.exports = {
           prefLink: null
         }
         if (result.length) {
-          viewCountCategoriesModel(search, (_err, data) => {
+          viewCountCategoriesModel(searchKey, searchValue, (_err, data) => {
             // console.log(data)
             const { count } = data[0]
             // console.log(count)
@@ -99,7 +105,7 @@ module.exports = {
           })
         }
       } else {
-        // console.log(err)
+        console.log(err)
         res.status(500).send({
           sucess: false,
           message: 'Internal Server Error'
@@ -109,26 +115,57 @@ module.exports = {
   },
   getDetailCategories: (req, res) => {
     const { id } = req.params
-    getCategoryModel(id, (err, result) => {
-      const choosenData = result[0]
-      if (result[0]) {
-        if (!err) {
-          res.status(201).send({
-            success: true,
-            message: `Get data from category = ${id} is success`,
-            choosenData
+    let { page = 1, limit = 5, sort = { price: 0 } } = req.query
+    const sortKey = Object.keys(sort)[0] || 'price'
+    let sortValue = Number(Object.values(sort)[0]) || 0
+    !sortValue ? sortValue = 'ASC' : sortValue = 'DESC'
+    Number(limit) && limit > 0 ? limit = Number(limit) : limit = 5
+    Number(page) && page > 0 ? page = Number(page) : page = 1
+    const offset = (page - 1) * limit
+    getCategoryModel(id, sortKey, sortValue, limit, offset, (err, result) => {
+      console.log(result[0])
+      if (!err) {
+        const pageInfo = {
+          count: 0,
+          pages: 1,
+          currentPage: page,
+          dataPerPage: limit,
+          nextLink: null,
+          prefLink: null
+        }
+        if (result.length) {
+          getCategoryCountModel(id, (_err, data) => {
+          // console.log(data)
+            const { count } = data[0]
+            // console.log(count)
+            pageInfo.count = count
+            pageInfo.pages = Math.ceil(count / limit)
+            const { pages, currentPage } = pageInfo
+            if (currentPage < pages) {
+              pageInfo.nextLink = `http://localhost:8080/categories/${id}?${qs.stringify({ ...req.query, ...{ page: page + 1 } })}`
+            }
+            if (currentPage > 1) {
+              pageInfo.prefLink = `http://localhost:8080/categories/${id}?${qs.stringify({ ...req.query, ...{ page: page - 1 } })}`
+            }
+            res.status(201).send({
+              success: true,
+              message: `List of items on ${result[0].category} category`,
+              data: result,
+              pageInfo
+            })
           })
         } else {
-          // console.log(err0)
-          res.status(500).send({
-            success: false,
-            message: 'Internal Server Error'
+          res.status(201).send({
+            success: true,
+            message: 'There is no items in the list',
+            pageInfo
           })
         }
       } else {
-        res.status(201).send({
-          success: true,
-          message: 'The id you choose is invalid!'
+        console.log(err)
+        res.status(500).send({
+          sucess: false,
+          message: 'Internal Server Error'
         })
       }
     })
@@ -166,7 +203,9 @@ module.exports = {
     console.log(id)
     deleteCategoryModel(id, (err, result) => {
       if (result.affectedRows) {
-        updateItemModel(`category_id = ${null}`, `category_id = ${id}`, (_err, _result) => {
+        const setCategory = `category_id = ${null}`
+        const searchCategory = `category_id = ${id}`
+        updateItemModel(setCategory, searchCategory, (_err, _result) => {
           console.log(result)
           res.status(201).send({
             success: true,
