@@ -79,6 +79,7 @@ module.exports = {
         if (result.length) {
           viewCountCategoriesModel(searchKey, searchValue, (_err, data) => {
             // console.log(data)
+            console.log(_err)
             const { count } = data[0]
             // console.log(count)
             pageInfo.count = count

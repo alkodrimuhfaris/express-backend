@@ -217,62 +217,70 @@ module.exports = {
     console.log('qty obj entries: ' + qty[0])
     if (qty.length === 2 && itemId) {
       getMycartModel(userId, andValue, 0, 1, (_err, result) => {
-        console.log('quantity: ' + result[0].quantity)
-        console.log('itemIdSelected: ' + result[0].item_id)
-        const itemIdSelected = result[0].item_id
-        const quantity = result[0].quantity
-        if (qty[0] === 'add') {
-          qty[1] = quantity + qty[1]
-          qty[0] = 'quantity'
-        } else if (qty[0] === 'subtract') {
-          qty[1] = quantity - qty[1]
-          qty[0] = 'quantity'
-        }
-        if ((itemId === 0) || (itemId === itemIdSelected)) {
-          const queryUpdate = `${qty[0]} = ${qty[1]},`
-          updateMycartModel(queryUpdate, cartId, (err1, result1) => {
-            if (result1.affectedRows) {
-              res.status(201).send({
-                success: true,
-                message: 'item has been updated',
-                quantity: qty[0],
-                newData: req.body
-              })
-            } else {
-              console.log(err1)
-              res.status(500).send({
-                success: false,
-                message: 'forbidden request'
-              })
-            }
-          })
+        console.log(_err)
+        if (result[0].quantity) {
+          console.log('quantity: ' + result[0].quantity)
+          console.log('itemIdSelected: ' + result[0].item_id)
+          const itemIdSelected = result[0].item_id
+          const quantity = result[0].quantity
+          if (qty[0] === 'add') {
+            qty[1] = quantity + qty[1]
+            qty[0] = 'quantity'
+          } else if (qty[0] === 'subtract') {
+            qty[1] = quantity - qty[1]
+            qty[0] = 'quantity'
+          }
+          if ((itemId === 0) || (itemId === itemIdSelected)) {
+            const queryUpdate = `${qty[0]} = ${qty[1]},`
+            updateMycartModel(queryUpdate, cartId, (err1, result1) => {
+              if (result1.affectedRows) {
+                res.status(201).send({
+                  success: true,
+                  message: 'item has been updated',
+                  quantity: qty[0],
+                  newData: req.body
+                })
+              } else {
+                console.log(err1)
+                res.status(500).send({
+                  success: false,
+                  message: 'forbidden request'
+                })
+              }
+            })
+          } else {
+            andValue = `AND (item_id = ${itemId})`
+            getMycartModel(userId, andValue, 0, 1, (_err0, result0) => {
+              if (!result0.length) {
+                const qry2 = `, item_id = ${itemId},`
+                const queryUpdate = `${qty[0]} = ${qty[1]} ${qry2}`
+                updateMycartModel(queryUpdate, cartId, (err1, result1) => {
+                  if (result1.affectedRows) {
+                    res.status(201).send({
+                      success: true,
+                      message: 'item has been updated',
+                      newData: req.body
+                    })
+                  } else {
+                    console.log(err1)
+                    res.status(500).send({
+                      success: false,
+                      message: 'Can not update the item'
+                    })
+                  }
+                })
+              } else {
+                res.status(500).send({
+                  success: false,
+                  message: 'You already have item with same id! do patch or chose another item!'
+                })
+              }
+            })
+          }
         } else {
-          andValue = `AND (item_id = ${itemId})`
-          getMycartModel(userId, andValue, 0, 1, (_err0, result0) => {
-            if (!result0.length) {
-              const qry2 = `, item_id = ${itemId},`
-              const queryUpdate = `${qty[0]} = ${qty[1]} ${qry2}`
-              updateMycartModel(queryUpdate, cartId, (err1, result1) => {
-                if (result1.affectedRows) {
-                  res.status(201).send({
-                    success: true,
-                    message: 'item has been updated',
-                    newData: req.body
-                  })
-                } else {
-                  console.log(err1)
-                  res.status(500).send({
-                    success: false,
-                    message: 'Can not update the item'
-                  })
-                }
-              })
-            } else {
-              res.status(500).send({
-                success: false,
-                message: 'You already have item with same id! do patch or chose another item!'
-              })
-            }
+          res.status(500).send({
+            success: true,
+            message: 'cart id you inputted is not here!'
           })
         }
       })
@@ -299,76 +307,83 @@ module.exports = {
     qty = qty || ['null', 0]
     if (qty.length <= 2 || itemId) {
       getMycartModel(userId, andValue, 0, 1, (_err, result) => {
-        console.log(_err)
-        console.log('quantity: ' + result[0].quantity)
-        console.log('itemIdSelected: ' + result[0].item_id)
-        const itemIdSelected = result[0].item_id
-        const quantity = result[0].quantity
-        let qry1 = ''
-        let qry2 = ''
-        const queryUpdate = `${qry1} ${qry2}`
-        if (qty[0] === 'add') {
-          qty[1] = quantity + qty[1]
-          qty[0] = 'quantity'
-          qry1 = `${qty[0]} = ${qty[1]},`
-        } else if (qty[0] === 'subtract') {
-          qty[1] = quantity - qty[1]
-          qty[0] = 'quantity'
-          qry1 = `${qty[0]} = ${qty[1]}`
-        } else if (qty[0] === 'quantity') {
-          qry1 = `${qty[0]} = ${qty[1]},`
-        } else {
-          qry1 = ''
-        }
-        console.log(qry1)
-        if ((itemId === 0) || (itemId === itemIdSelected)) {
-          qry2 = `item_id = ${itemIdSelected}`
-          console.log(queryUpdate)
-          updateMycartModel(queryUpdate, cartId, (err1, result1) => {
-            console.log(err1)
-            console.log(result1)
-            if (!err1) {
-              res.status(201).send({
-                success: true,
-                message: 'item has been updated',
-                quantity: qty[0],
-                newData: req.body
-              })
-            } else {
+        if (result[0]) {
+          console.log(_err)
+          console.log('quantity: ' + result[0].quantity)
+          console.log('itemIdSelected: ' + result[0].item_id)
+          const itemIdSelected = result[0].item_id
+          const quantity = result[0].quantity
+          let qry1 = ''
+          let qry2 = ''
+          const queryUpdate = `${qry1} ${qry2}`
+          if (qty[0] === 'add') {
+            qty[1] = quantity + qty[1]
+            qty[0] = 'quantity'
+            qry1 = `${qty[0]} = ${qty[1]},`
+          } else if (qty[0] === 'subtract') {
+            qty[1] = quantity - qty[1]
+            qty[0] = 'quantity'
+            qry1 = `${qty[0]} = ${qty[1]}`
+          } else if (qty[0] === 'quantity') {
+            qry1 = `${qty[0]} = ${qty[1]},`
+          } else {
+            qry1 = ''
+          }
+          console.log(qry1)
+          if ((itemId === 0) || (itemId === itemIdSelected)) {
+            qry2 = `item_id = ${itemIdSelected}`
+            console.log(queryUpdate)
+            updateMycartModel(queryUpdate, cartId, (err1, result1) => {
               console.log(err1)
-              res.status(500).send({
-                success: false,
-                message: 'forbidden request'
-              })
-            }
-          })
+              console.log(result1)
+              if (!err1) {
+                res.status(201).send({
+                  success: true,
+                  message: 'item has been updated',
+                  quantity: qty[0],
+                  newData: req.body
+                })
+              } else {
+                console.log(err1)
+                res.status(500).send({
+                  success: false,
+                  message: 'forbidden request'
+                })
+              }
+            })
+          } else {
+            andValue = `AND (item_id = ${itemId})`
+            getMycartModel(userId, andValue, 0, 1, (_err0, result0) => {
+              if (!result0.length) {
+                const qry2 = `item_id = ${itemId},`
+                const queryUpdate = `${qry1} ${qry2}`
+                updateMycartModel(queryUpdate, cartId, (err1, result1) => {
+                  if (result1.affectedRows) {
+                    res.status(201).send({
+                      success: true,
+                      message: 'item has been updated',
+                      newData: req.body
+                    })
+                  } else {
+                    console.log(err1)
+                    res.status(500).send({
+                      success: false,
+                      message: 'Can not update the item'
+                    })
+                  }
+                })
+              } else {
+                res.status(500).send({
+                  success: false,
+                  message: 'You already have item with same id! do patch or chose another item!'
+                })
+              }
+            })
+          }
         } else {
-          andValue = `AND (item_id = ${itemId})`
-          getMycartModel(userId, andValue, 0, 1, (_err0, result0) => {
-            if (!result0.length) {
-              const qry2 = `item_id = ${itemId},`
-              const queryUpdate = `${qry1} ${qry2}`
-              updateMycartModel(queryUpdate, cartId, (err1, result1) => {
-                if (result1.affectedRows) {
-                  res.status(201).send({
-                    success: true,
-                    message: 'item has been updated',
-                    newData: req.body
-                  })
-                } else {
-                  console.log(err1)
-                  res.status(500).send({
-                    success: false,
-                    message: 'Can not update the item'
-                  })
-                }
-              })
-            } else {
-              res.status(500).send({
-                success: false,
-                message: 'You already have item with same id! do patch or chose another item!'
-              })
-            }
+          res.status(500).send({
+            success: true,
+            message: 'cart id you inputted is not here!'
           })
         }
       })

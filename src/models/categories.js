@@ -33,7 +33,8 @@ module.exports = {
     db.query(`
     SELECT COUNT(newTable.id) AS 'count'
     FROM (
-      SELECT ${tables}.id as id, ${tables}.name as category, items.name as product, created_at, count(${tables}.id) as 'total product'
+      SELECT ${tables}.id as id, ${tables}.name as category, items.name as product,
+      items.created_at as item_created, count(${tables}.id) as 'total product'
       FROM ${tables}
       LEFT JOIN items
       ON ${tables}.id = items.category_id
