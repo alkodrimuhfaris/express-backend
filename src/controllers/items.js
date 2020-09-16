@@ -7,8 +7,6 @@ app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 app.use(express.static('public'))
 
-const qs = require('querystring')
-
 const {
   getItemModel,
   viewItemsModel,
@@ -18,41 +16,25 @@ const {
   deleteItemModel
 } = require('../models/items')
 
+const pagination = require('../helpers/pagination')
+const features = require('../helpers/features')
+const table = 'items'
+
 module.exports = {
   viewItems: (req, res) => {
-    let { page = 1, limit = 5, search = { name: '' }, sort = { id: 0 } } = req.query
-    const searchKey = Object.keys(search)[0] || 'name'
-    const searchValue = Object.values(search)[0] || ''
-    const sortKey = Object.keys(sort)[0] || 'id'
-    let sortValue = Number(Object.values(sort)[0]) || 0
-    !sortValue ? sortValue = 'ASC' : sortValue = 'DESC'
-    Number(limit) && limit > 0 ? limit = Number(limit) : limit = 5
-    Number(page) && page > 0 ? page = Number(page) : page = 1
-    const offset = (page - 1) * limit
+    let count = 0
+    const defSearch = 'name'
+    const defSort = 'id'
+    const { searchKey, searchValue, sortKey, sortValue } = features(req.query, table, defSearch, defSort)
+    const { page, limit, offset } = pagination.pagePrep(req.query)
     viewItemsModel(searchKey, searchValue, sortKey, sortValue, limit, offset, (err, result) => {
       if (!err) {
-        const pageInfo = {
-          count: 0,
-          pages: 1,
-          currentPage: page,
-          dataPerPage: limit,
-          nextLink: null,
-          prefLink: null
-        }
         if (result.length) {
           viewCountItemsModel(searchKey, searchValue, (_err, data) => {
             // console.log(data)
-            const { count } = data[0]
+            count = data[0]
             // console.log(count)
-            pageInfo.count = count
-            pageInfo.pages = Math.ceil(count / limit)
-            const { pages, currentPage } = pageInfo
-            if (currentPage < pages) {
-              pageInfo.nextLink = `http://localhost:8080/items?${qs.stringify({ ...req.query, ...{ page: page + 1 } })}`
-            }
-            if (currentPage > 1) {
-              pageInfo.prefLink = `http://localhost:8080/items?${qs.stringify({ ...req.query, ...{ page: page - 1 } })}`
-            }
+            const pageInfo = pagination.paging(count, page, limit, table, req)
             res.status(201).send({
               success: true,
               message: 'List of items',
@@ -61,6 +43,7 @@ module.exports = {
             })
           })
         } else {
+          const pageInfo = pagination.paging(count, page, limit, table, req)
           res.status(201).send({
             success: true,
             message: 'There is no item in the list',
@@ -104,10 +87,12 @@ module.exports = {
   },
   createItem: (req, res) => {
     const colName = Object.keys(req.body)
-    const colValue = Object.values(req.body).filter(item => item.trim()).map(item => {
-      item = sanitize(item)
-      return (Number(item) > 0) ? Number(item) : `'${item}'`
-    })
+    const colValue = Object.values(req.body)
+      .filter(item => item.trim())
+      .map(item => {
+        item = sanitize(item)
+        return (Number(item) > 0) ? Number(item) : `'${item}'`
+      })
     if (colName.length === colValue.length) {
       createItemModel(colName, colValue, (err, result) => {
         // if (error) throw err
@@ -143,10 +128,16 @@ module.exports = {
     const keyLength = Object.keys(req.body).length
     const valLength = Object.values(req.body).filter(item => item.trim()).length
     if ((keyLength === valLength) && ((price > 0) || price === '')) {
-      const data = Object.entries(req.body).filter(item => item[1].trim()).map(item => {
-        item[1] = sanitize(item[1])
-        return (Number(item[1]) > 0) ? `${item[0]}=${Number(item[1])}` : `${item[0]}='${item[1]}'`
-      })
+      const data = Object.entries(req.body)
+        .filter(item => item[1].trim())
+        .map(item => {
+          item[1] = sanitize(item[1])
+          return (
+            (Number(item[1]) > 0)
+              ? `${item[0]}=${Number(item[1])}`
+              : `${item[0]}='${item[1]}'`
+          )
+        })
       const whereId = `id = ${id}`
       updateItemModel(data, whereId, (err, result) => {
         if (result.affectedRows) {

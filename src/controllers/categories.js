@@ -7,8 +7,6 @@ app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 app.use(express.static('public'))
 
-const qs = require('querystring')
-
 const {
   createCategoryModel,
   viewCategoriesModel,
@@ -23,6 +21,10 @@ const {
 const {
   updateItemModel
 } = require('../models/items')
+
+const pagination = require('../helpers/pagination')
+const features = require('../helpers/features')
+const table = 'categories'
 
 // POST
 module.exports = {
@@ -57,48 +59,28 @@ module.exports = {
     }
   },
   viewCategories: (req, res) => {
-    let { page = 1, limit = 5, search = { 'categories.name': '' }, sort = { 'categories.id': 0 } } = req.query
-    const searchKey = Object.keys(search)[0] || 'categories.name'
-    const searchValue = Object.values(search)[0] || ''
-    const sortKey = Object.keys(sort)[0] || 'categories.id'
-    let sortValue = Number(Object.values(sort)[0]) || 0
-    !sortValue ? sortValue = 'ASC' : sortValue = 'DESC'
-    Number(limit) && limit > 0 ? limit = Number(limit) : limit = 5
-    Number(page) && page > 0 ? page = Number(page) : page = 1
-    const offset = (page - 1) * limit
+    let count = 0
+    const defSearch = 'name'
+    const defSort = 'id'
+    const { searchKey, searchValue, sortKey, sortValue } = features(req.query, table, defSearch, defSort)
+    const { page, limit, offset } = pagination.pagePrep(req.query)
     viewCategoriesModel(searchKey, searchValue, sortKey, sortValue, limit, offset, (err, result) => {
       if (!err) {
-        const pageInfo = {
-          count: 0,
-          pages: 1,
-          currentPage: page,
-          dataPerPage: limit,
-          nextLink: null,
-          prefLink: null
-        }
         if (result.length) {
           viewCountCategoriesModel(searchKey, searchValue, (_err, data) => {
-            // console.log(data)
             console.log(_err)
-            const { count } = data[0]
-            // console.log(count)
-            pageInfo.count = count
-            pageInfo.pages = Math.ceil(count / limit)
-            const { pages, currentPage } = pageInfo
-            if (currentPage < pages) {
-              pageInfo.nextLink = `http://localhost:8080/categories?${qs.stringify({ ...req.query, ...{ page: page + 1 } })}`
-            }
-            if (currentPage > 1) {
-              pageInfo.prefLink = `http://localhost:8080/categories?${qs.stringify({ ...req.query, ...{ page: page - 1 } })}`
-            }
+            count = data[0]
+            const pageInfo = pagination.paging(count, page, limit, table, req)
             res.status(201).send({
               success: true,
               message: 'List of categories',
+              category: result[0].category,
               data: result,
               pageInfo
             })
           })
         } else {
+          const pageInfo = pagination.paging(count, page, limit, table, req)
           res.status(201).send({
             success: true,
             message: 'There is no category in the list',
@@ -116,38 +98,18 @@ module.exports = {
   },
   getDetailCategories: (req, res) => {
     const { id } = req.params
-    let { page = 1, limit = 5, sort = { price: 0 } } = req.query
-    const sortKey = Object.keys(sort)[0] || 'price'
-    let sortValue = Number(Object.values(sort)[0]) || 0
-    !sortValue ? sortValue = 'ASC' : sortValue = 'DESC'
-    Number(limit) && limit > 0 ? limit = Number(limit) : limit = 5
-    Number(page) && page > 0 ? page = Number(page) : page = 1
-    const offset = (page - 1) * limit
+    let count = 0
+    const defSort = 'price'
+    const defSearch = 'name'
+    const { sortKey, sortValue } = features(req.query, table, defSearch, defSort)
+    const { page, limit, offset } = pagination.pagePrep(req.query)
     getCategoryModel(id, sortKey, sortValue, limit, offset, (err, result) => {
       console.log(result[0])
       if (!err) {
-        const pageInfo = {
-          count: 0,
-          pages: 1,
-          currentPage: page,
-          dataPerPage: limit,
-          nextLink: null,
-          prefLink: null
-        }
         if (result.length) {
           getCategoryCountModel(id, (_err, data) => {
-          // console.log(data)
-            const { count } = data[0]
-            // console.log(count)
-            pageInfo.count = count
-            pageInfo.pages = Math.ceil(count / limit)
-            const { pages, currentPage } = pageInfo
-            if (currentPage < pages) {
-              pageInfo.nextLink = `http://localhost:8080/categories/${id}?${qs.stringify({ ...req.query, ...{ page: page + 1 } })}`
-            }
-            if (currentPage > 1) {
-              pageInfo.prefLink = `http://localhost:8080/categories/${id}?${qs.stringify({ ...req.query, ...{ page: page - 1 } })}`
-            }
+            count = data[0]
+            const pageInfo = pagination.paging(count, page, limit, table, req)
             res.status(201).send({
               success: true,
               message: `List of items on ${result[0].category} category`,
@@ -156,6 +118,7 @@ module.exports = {
             })
           })
         } else {
+          const pageInfo = pagination.paging(count, page, limit, table, req)
           res.status(201).send({
             success: true,
             message: 'There is no items in the list',
