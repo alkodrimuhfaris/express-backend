@@ -22,17 +22,17 @@ const table = 'items'
 
 module.exports = {
   viewItems: (req, res) => {
-    let count = 0
+    const count = 0
     const defSearch = 'name'
     const defSort = 'id'
-    const { searchKey, searchValue, sortKey, sortValue } = features(req.query, table, defSearch, defSort)
+    const { searchKey, searchValue, sortKey, sortValue } = features(req.query, defSearch, defSort)
     const { page, limit, offset } = pagination.pagePrep(req.query)
     viewItemsModel(searchKey, searchValue, sortKey, sortValue, limit, offset, (err, result) => {
       if (!err) {
         if (result.length) {
           viewCountItemsModel(searchKey, searchValue, (_err, data) => {
             // console.log(data)
-            count = data[0]
+            const { count } = data[0]
             // console.log(count)
             const pageInfo = pagination.paging(count, page, limit, table, req)
             res.status(201).send({

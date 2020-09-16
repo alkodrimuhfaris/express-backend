@@ -12,7 +12,7 @@ module.exports = {
       cb(err, result)
     })
   },
-  viewCategoriesModel: (searchKey, searchValue, colom, sort, limit, offset, cb) => {
+  viewCategoriesModel: (searchKey, searchValue, column, sort, limit, offset, cb) => {
     db.query(`
     SELECT ${tables}.id as id, ${tables}.name as category,
     ${tables}.created_at as 'created at', items.id as item_id, price, items.name as product,
@@ -23,7 +23,7 @@ module.exports = {
     WHERE ${searchKey}
     LIKE '%${searchValue}%'
     GROUP BY ${tables}.id
-    ORDER BY ${colom} ${sort}
+    ORDER BY ${column} ${sort}
     LIMIT ${offset}, ${limit}`,
     (err, result, _field) => {
       cb(err, result)
@@ -46,7 +46,7 @@ module.exports = {
       cb(err, result)
     })
   },
-  getCategoryModel: (id, colom, sort, limit, offset, cb) => {
+  getCategoryModel: (id, column, sort, limit, offset, cb) => {
     db.query(`
     SELECT ${tables}.name as category,
     items.name as product,
@@ -56,7 +56,7 @@ module.exports = {
     LEFT JOIN items
     ON ${tables}.id = items.category_id
     WHERE ${tables}.id = ${id}
-    ORDER BY ${colom} ${sort}
+    ORDER BY ${column} ${sort}
     LIMIT ${offset}, ${limit}`,
     (err, result, _field) => {
       cb(err, result)

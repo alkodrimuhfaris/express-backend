@@ -59,22 +59,21 @@ module.exports = {
     }
   },
   viewCategories: (req, res) => {
-    let count = 0
-    const defSearch = 'name'
-    const defSort = 'id'
-    const { searchKey, searchValue, sortKey, sortValue } = features(req.query, table, defSearch, defSort)
+    const count = 0
+    const defSearch = 'categories.name'
+    const defSort = 'items.created_at'
+    const { searchKey, searchValue, sortKey, sortValue } = features(req.query, defSearch, defSort)
     const { page, limit, offset } = pagination.pagePrep(req.query)
     viewCategoriesModel(searchKey, searchValue, sortKey, sortValue, limit, offset, (err, result) => {
       if (!err) {
         if (result.length) {
           viewCountCategoriesModel(searchKey, searchValue, (_err, data) => {
             console.log(_err)
-            count = data[0]
+            const { count } = data[0]
             const pageInfo = pagination.paging(count, page, limit, table, req)
             res.status(201).send({
               success: true,
               message: 'List of categories',
-              category: result[0].category,
               data: result,
               pageInfo
             })
@@ -98,21 +97,22 @@ module.exports = {
   },
   getDetailCategories: (req, res) => {
     const { id } = req.params
-    let count = 0
+    const count = 0
     const defSort = 'price'
-    const defSearch = 'name'
-    const { sortKey, sortValue } = features(req.query, table, defSearch, defSort)
+    const defSearch = 'product'
+    const { sortKey, sortValue } = features(req.query, defSearch, defSort)
     const { page, limit, offset } = pagination.pagePrep(req.query)
     getCategoryModel(id, sortKey, sortValue, limit, offset, (err, result) => {
-      console.log(result[0])
+      console.log(err)
       if (!err) {
         if (result.length) {
           getCategoryCountModel(id, (_err, data) => {
-            count = data[0]
+            const { count } = data[0]
             const pageInfo = pagination.paging(count, page, limit, table, req)
             res.status(201).send({
               success: true,
-              message: `List of items on ${result[0].category} category`,
+              message: 'List of items on category',
+              category: result[0].category,
               data: result,
               pageInfo
             })

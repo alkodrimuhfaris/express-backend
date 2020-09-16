@@ -85,17 +85,17 @@ module.exports = {
   },
 
   viewMycart: (req, res) => {
-    let count = 0
-    const defSearch = 'name'
+    const count = 0
+    const defSearch = 'user_id'
     const defSort = 'date_added'
-    const { searchKey, searchValue, sortKey, sortValue } = features(req.query, table, defSearch, defSort)
+    const { searchKey, searchValue, sortKey, sortValue } = features(req.query, defSearch, defSort)
     const { page, limit, offset } = pagination.pagePrep(req.query)
     viewMycartsModel(searchKey, searchValue, sortKey, sortValue, limit, offset, (err, result) => {
       if (!err) {
         if (result.length) {
           viewCountMycartsModel(searchKey, searchValue, (_err, data) => {
             // console.log(data)
-            count = data[0]
+            const { count } = data[0]
             const pageInfo = pagination.paging(count, page, limit, table, req)
             res.status(201).send({
               success: true,
@@ -124,7 +124,7 @@ module.exports = {
 
   getDetailMyCart: (req, res) => {
     const { userId } = req.params
-    let count = 0
+    const count = 0
     console.log(userId)
     const { filter = { item_id: 0 } } = req.query
     const andValue = Object.entries(filter)
@@ -141,7 +141,7 @@ module.exports = {
         if (result.length) {
           getCountMycartModel(userId, andValue, (_err, data) => {
             console.log(data)
-            count = data[0]
+            const { count } = data[0]
             const pageInfo = pagination.paging(count, page, limit, table, req)
             res.status(201).send({
               success: true,
