@@ -1,66 +1,179 @@
 const db = require('../helpers/db')
-// const getTime = require('../helpers/getMySQLTime')
+const getFromDB = require('../helpers/promiseForSQL')
+const transactionMySQL = require ('../helpers/transactionMySQL')
 
-const tables = 'items'
+const table = 'items'
+let query = ''
 
 module.exports = {
-  getItemModel: (id, cb) => {
-    db.query(`
-    SELECT *
-    FROM ${tables}
-    WHERE id = ${id}`,
-    (err, result, _field) => {
-      cb(err, result)
-    })
+  getItemPlain: async (id, tables=table) => {
+    query = `SELECT *
+            FROM ${tables}
+            LEFT join (
+                select 
+                    item_id, 
+                    max(case when name = 'product_image_1' then image_url end) 'product_image_1',
+                    max(case when name = 'product_image_2' then image_url end) 'product_image_2',
+                    max(case when name = 'product_image_3' then image_url end) 'product_image_3',
+                    max(case when name = 'product_image_4' then image_url end) 'product_image_4'
+                from item_images
+                group by item_id
+              ) as images
+            ON items.id = images.item_id
+            WHERE items.id = ${id}`
+    console.log(query)
+    return await getFromDB(query)
   },
-  viewItemsModel: (searchKey, searchValue, colom, sort, limit, offset, cb) => {
-    db.query(`
-    SELECT *
-    FROM ${tables}
-    WHERE ${searchKey}
-    LIKE '%${searchValue}%'
-    ORDER BY ${colom} ${sort}
-    LIMIT ${limit}
-    OFFSET ${offset}`,
-    (err, result, _field) => {
-      cb(err, result)
-    })
+  getDetailItem: async (id, tables='item_details') => {
+    query = `SELECT *
+            FROM ${tables}
+            WHERE id = ${id}`
+    return await getFromDB(query)
   },
-  viewCountItemsModel: (searchKey, searchValue, cb) => {
-    db.query(`
-    SELECT
-    COUNT(*) AS count
-    FROM ${tables}
-    WHERE ${searchKey}
-    LIKE '%${searchValue}%'`,
-    (err, result, _field) => {
-      cb(err, result)
-    })
+  getFromItemDetails: async (itemId, tables='item_details') => {
+    query = `SELECT *
+            FROM ${tables}
+            WHERE item_id = ${itemId}`
+    return await getFromDB(query)
   },
-  createItemModel: (colName, colValue, cb) => {
-    db.query(`
-    INSERT INTO ${tables} (${colName})
-    VALUE (${colValue})`,
-    (err, result, _field) => {
-      cb(err, result)
-    })
+  viewItemsModel: async (searchKey, searchValue, colom, sort, limiter, and, tables=table) => {
+    query = `SELECT *
+            FROM ${tables}
+            WHERE ${searchKey}
+            LIKE '%${searchValue}%'
+            ${and}
+            ORDER BY ${colom} ${sort}
+            ${limiter}`
+    console.log(query)
+    return await getFromDB(query)
   },
-  updateItemModel: (data, dataId, cb) => {
-    db.query(`
-    UPDATE ${tables}
-    SET ${data}, updated_at=NOW()
-    WHERE ${dataId}`,
-    (err, result, _field) => {
-      cb(err, result)
-    })
+  viewCountItemsModel: async (searchKey, searchValue, and, tables=table) => {
+    query = `SELECT
+            COUNT(*) AS count
+            FROM ${tables}
+            WHERE ${searchKey}
+            LIKE '%${searchValue}%'
+            ${and}`
+    console.log(query)
+    return await getFromDB(query)
   },
-  deleteItemModel: (id, cb) => {
-    db.query(`
-    DELETE
-    FROM ${tables}
-    WHERE id = ${id}`,
-    (err, result, _field) => {
-      cb(err, result)
-    })
+  viewAllImage: async (itemId, or, tables='item_images') => {
+    let andOrQuery = ''
+    let orQuery = []
+    or.forEach(el => orQuery.push(' ? '))
+    orQuery = orQuery.join(' or ')
+    or.length && (andOrQuery = `AND (${orQuery})`)
+    query = `SELECT *
+            FROM ${tables}
+            WHERE item_id = ${itemId}
+            ${andOrQuery}`
+    return await getFromDB(query, or)
+  },
+  createItemModel: async (res, keys, items, itemDetails, itemImages) => {
+    let query2 = `INSERT INTO item_details (${keys[0]},item_id) VALUES ?`
+    let query3 = `INSERT INTO item_images (${keys[1]}) VALUES ?`
+    query = [ ['INSERT INTO items SET ?', items],
+    [query2, itemDetails],
+    [query3, itemImages]]
+    return await transactionMySQL(res, query)
+  },
+  updateItemModelNew: async (res, keys, items, itemDetails, itemDetailsAdd=[], itemImages, imagesAdd=[], id, requires) => {
+    let datas = [itemDetails, itemDetailsAdd, itemImages, imagesAdd]
+    let keyValues = []
+    for (let element of keys) {
+      let keyValue=[]
+      element.length ? element.forEach(el => { 
+        let value = `${el} = values(${el})`
+        keyValue.push(value)
+      })
+      : keyValue.push(null)
+      keyValues.push(keyValue)
+    }
+
+    let query1 = `UPDATE items SET ? WHERE id = ${id}`
+    let query2 = `INSERT INTO item_details (${keys[0]}) VALUES ? ON DUPLICATE KEY UPDATE ${keyValues[0]}`
+    let query3 = `INSERT INTO item_details (${keys[1]},item_id) VALUES ?`
+    let query4 = `INSERT INTO item_images (${keys[2]}) VALUES ? ON DUPLICATE KEY UPDATE ${keyValues[2]}`
+    let query5 = `INSERT INTO item_images (${keys[3]}) VALUES ?`
+    let queries = [query2,query3,query4,query5]
+
+    query = [ [query1, items] ]
+    let n=0
+    for (let data of datas){
+      data[0].length && query.push([queries[n], data])
+      n++
+    }
+
+    return await transactionMySQL(res, query, requires)
+  },
+  createItemImgModel: async (data, tables=table) => {
+    query = `INSERT INTO ${tables} ?
+            VALUES ?`
+    return await getFromDB(query, data)
+  },
+  updateItemModel: async (data, dataId, tables=table) => {
+    query = `UPDATE ${tables}
+            SET ?, updated_at=NOW()
+            WHERE ${dataId}`
+    return await getFromDB(query, data)
+  },
+  deleteItemModel: async (id, tables=table) => {
+    query = `DELETE
+            FROM ${tables}
+            WHERE id = ${id}`
+    return await getFromDB(query)
+  },
+  viewAllItemsModel: async (searchKey, searchValue, colom, sort, limiter, and, tables=table) => {
+    query = `SELECT items.id, items.name as name, 
+            items.description, sum(stock) as stock, 
+            min(price), items.created_at as created, avg(rating) as rating, product_image_1, product_image_2, product_image_3, product_image_4 
+            FROM items 
+              LEFT join item_details ON items.id = item_details.item_id 
+              LEFT join (
+                select 
+                    item_id, 
+                    max(case when name = 'product_image_1' then image_url end) 'product_image_1',
+                    max(case when name = 'product_image_2' then image_url end) 'product_image_2',
+                    max(case when name = 'product_image_3' then image_url end) 'product_image_3',
+                    max(case when name = 'product_image_4' then image_url end) 'product_image_4'
+                from item_images
+                group by item_id
+              ) as images
+               ON items.id = images.item_id
+              LEFT join item_ratings ON items.id = item_ratings.item_id
+            WHERE items.name
+              LIKE '%${searchValue}%'
+              ${and} 
+            GROUP BY items.id 
+            ORDER BY ${colom} ${sort}
+            ${limiter}`
+    return await getFromDB(query)
+  },
+  viewAllItemsModelCount: async (searchKey, searchValue, and, tables=table) => {
+    query = `SELECT COUNT(newTable.id) AS 'count'
+            FROM (
+              SELECT items.id, items.name as name, 
+                items.description, sum(stock) as stock, 
+                min(price), items.created_at as created, avg(rating) as rating, product_image_1, product_image_2, product_image_3, product_image_4 
+                FROM items 
+                  LEFT join item_details ON items.id = item_details.item_id 
+                  LEFT join (
+                    select 
+                        item_id, 
+                        max(case when name = 'product_image_1' then image_url end) 'product_image_1',
+                        max(case when name = 'product_image_2' then image_url end) 'product_image_2',
+                        max(case when name = 'product_image_3' then image_url end) 'product_image_3',
+                        max(case when name = 'product_image_4' then image_url end) 'product_image_4'
+                    from item_images
+                    group by item_id
+                  ) as images
+                   ON items.id = images.item_id
+                  LEFT join item_ratings ON items.id = item_ratings.item_id
+                WHERE items.name
+                  LIKE '%${searchValue}%'
+                  ${and} 
+                GROUP BY items.id 
+             ) as newTable`
+    return await getFromDB(query)
   }
 }

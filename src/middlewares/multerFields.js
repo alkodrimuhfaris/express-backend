@@ -2,8 +2,14 @@ const multer = require('multer')
 const path = require('path')
 const responseStandard = require('../helpers/response')
 
-module.exports = multerMiddleware = (field) => {
+module.exports = (name, arrNum=4, maxCount=1) => {
   return (req, res, next) => {
+
+    let arr = []
+    for (let i = 1; i <= arrNum; i++){
+      arr.push({name: `${name}_${i}`, maxCount})
+    }
+    console.log(arr)
 
     // storage
     const maxSize = process.env.MAX_FILE_SIZE*1000*1024
@@ -12,7 +18,7 @@ module.exports = multerMiddleware = (field) => {
         cb(null, './Assets/Public/Uploads')
       },
       filename: (req, file, cb) => {
-        cb(null, req.user.id + '-' + file.fieldname + '-' + Date.now() + path.extname(file.originalname))
+        cb(null, req.user.id + '-' + name + '-' + Date.now() + path.extname(file.originalname))
       }
     })
 
@@ -37,20 +43,21 @@ module.exports = multerMiddleware = (field) => {
         checkFileType(file, cb)
       },
       limits: { fileSize: maxSize }
-    }).single(field)
+    }).fields(arr)
 
     upload(req, res, err => {
       if (err instanceof multer.MulterError) {
         console.log(err)
+        console.log(arr)
         return responseStandard(res, err.message, {}, 500, false)
       } else if (req.fileValidationError) {
+        console.log(arr)
         return responseStandard(res, req.fileValidationError, {}, 400, false)
-      } else if (!req.file) {
-        return  responseStandard(res, 'select image to upload!', {}, 400, false)
       } else if (err) {
-        console.log(err)
+        console.log(arr)
         return responseStandard(res, err.message, {}, 500, false)
       } else {
+        console.log(arr)
         return next()
       }
     })

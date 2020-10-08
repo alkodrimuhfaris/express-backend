@@ -2,7 +2,7 @@ const multer = require('multer')
 const path = require('path')
 const responseStandard = require('../helpers/response')
 
-module.exports = multerMiddleware = (field) => {
+module.exports = (field, requires = 1, imgCount = 4) => {
   return (req, res, next) => {
 
     // storage
@@ -37,16 +37,15 @@ module.exports = multerMiddleware = (field) => {
         checkFileType(file, cb)
       },
       limits: { fileSize: maxSize }
-    }).single(field)
+    }).array(field, imgCount)
 
+    console.log('we are on multer')
     upload(req, res, err => {
       if (err instanceof multer.MulterError) {
         console.log(err)
         return responseStandard(res, err.message, {}, 500, false)
       } else if (req.fileValidationError) {
         return responseStandard(res, req.fileValidationError, {}, 400, false)
-      } else if (!req.file) {
-        return  responseStandard(res, 'select image to upload!', {}, 400, false)
       } else if (err) {
         console.log(err)
         return responseStandard(res, err.message, {}, 500, false)

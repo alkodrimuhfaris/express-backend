@@ -63,8 +63,8 @@ module.exports = {
     const defSearch = 'categories.name'
     const defSort = 'items.created_at'
     const { searchKey, searchValue, sortKey, sortValue } = features(req.query, defSearch, defSort)
-    const { page, limit, offset } = pagination.pagePrep(req.query)
-    viewCategoriesModel(searchKey, searchValue, sortKey, sortValue, limit, offset, (err, result) => {
+    const { page, limit, offset, limiter } = pagination.pagePrep(req.query)
+    viewCategoriesModel(searchKey, searchValue, sortKey, sortValue, limiter, (err, result) => {
       if (!err) {
         if (result.length) {
           viewCountCategoriesModel(searchKey, searchValue, (_err, data) => {

@@ -1,219 +1,243 @@
 const express = require('express')
 const app = express()
 const bodyParser = require('body-parser')
-const sanitize = require('../helpers/dataSanitizer')
+const responseStandard = require('../helpers/response')
+const arrayValSanitizer = require('../helpers/arrayValueSanitizer')
+const joi = require('joi')
+const arrayImagetoDB = require ('../helpers/imagetoDB')
+const updateImgtoDB = require ('../helpers/updateImgtoDB')
+const imgRemover = require ('../helpers/imgRemover')
 
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 app.use(express.static('public'))
 
 const {
-  getItemModel,
   viewItemsModel,
   viewCountItemsModel,
+  getDetailItem,
   createItemModel,
-  updateItemModel,
-  deleteItemModel
+  deleteItemModel,
+  getItemPlain,
+  viewAllItemsModel,
+  viewAllItemsModelCount,
+  getFromItemDetails,
+  updateItemModelNew
 } = require('../models/items')
+const {
+  itemFormController
+} = require('../helpers/joiControllerForm')
+
 
 const pagination = require('../helpers/pagination')
 const features = require('../helpers/features')
 const table = 'items'
 
 module.exports = {
-  viewItems: (req, res) => {
-    const count = 0
-    const defSearch = 'name'
-    const defSort = 'id'
-    const { searchKey, searchValue, sortKey, sortValue } = features(req.query, defSearch, defSort)
-    const { page, limit, offset } = pagination.pagePrep(req.query)
-    viewItemsModel(searchKey, searchValue, sortKey, sortValue, limit, offset, (err, result) => {
-      if (!err) {
-        if (result.length) {
-          viewCountItemsModel(searchKey, searchValue, (_err, data) => {
-            // console.log(data)
-            const { count } = data[0]
-            // console.log(count)
-            const pageInfo = pagination.paging(count, page, limit, table, req)
-            res.status(201).send({
-              success: true,
-              message: 'List of items',
-              data: result,
-              pageInfo
-            })
-          })
+  viewItems: async (req, res) => {
+    const defSearch = 'items.name'
+    const defSort = 'items.created_at'
+    const { searchKey,searchValue,sortKey,sortValue,and} = features(req.query, defSearch, defSort)
+    const {page,limit,limiter} = pagination.pagePrep(req.query)
+    try {
+      const result = await viewAllItemsModel(searchKey, searchValue, sortKey, sortValue, limiter, and)
+      const [{count}] = await viewAllItemsModelCount(searchKey, searchValue, and) || 0
+      console.log(count)
+       if (result.length) {
+          const pageInfo = pagination.paging(count, page, limit, table, req)
+          return responseStandard(res, 'List of Items', {...{data: result}, ...{pageInfo}})
         } else {
           const pageInfo = pagination.paging(count, page, limit, table, req)
-          res.status(201).send({
-            success: true,
-            message: 'There is no item in the list',
-            pageInfo
-          })
+          return responseStandard(res, 'There is no item in the list', pageInfo, 400, false)
         }
-      } else {
-        // console.log(err)
-        res.status(500).send({
-          sucess: false,
-          message: 'Internal Server Error'
-        })
-      }
-    })
-  },
-  getDetailItem: (req, res) => {
-    const { id } = req.params
-    getItemModel(id, (err, result) => {
-      const choosenData = result[0]
-      if (result[0]) {
-        if (!err) {
-          res.status(201).send({
-            success: true,
-            message: `Get data from id = ${req.params.id} is success`,
-            choosenData
-          })
-        } else {
-          // console.log(err0)
-          res.status(500).send({
-            success: false,
-            message: 'Internal Server Error'
-          })
-        }
-      } else {
-        res.status(201).send({
-          success: true,
-          message: 'The id you choose is invalid!'
-        })
-      }
-    })
-  },
-  createItem: (req, res) => {
-    const colName = Object.keys(req.body)
-    const colValue = Object.values(req.body)
-      .filter(item => item.trim())
-      .map(item => {
-        item = sanitize(item)
-        return (Number(item) > 0) ? Number(item) : `'${item}'`
-      })
-    if (colName.length === colValue.length) {
-      createItemModel(colName, colValue, (err, result) => {
-        // if (error) throw err
-        console.log(colName)
-        console.log(colValue)
-        if (!err) {
-          res.status(201).send({
-            success: true,
-            message: 'item has been created',
-            data: {
-              id: result.insertId,
-              ...req.body
-            }
-          })
-        } else {
-          console.log(err)
-          res.status(500).send({
-            success: false,
-            message: 'Internal Server Error'
-          })
-        }
-      })
-    } else {
-      res.status(400).send({
-        success: false,
-        message: 'All field must be filled!'
-      })
+    } catch (err) {
+      console.log(err)
+      return responseStandard(res, err.message, {}, 500, false)
     }
   },
-  updateItem: (req, res) => {
-    const { price = '' } = req.body
+  getDetailItem: async (req, res) => {
     const { id } = req.params
-    const keyLength = Object.keys(req.body).length
-    const valLength = Object.values(req.body).filter(item => item.trim()).length
-    if ((keyLength === valLength) && ((price > 0) || price === '')) {
-      const data = Object.entries(req.body)
-        .filter(item => item[1].trim())
-        .map(item => {
-          item[1] = sanitize(item[1])
-          return (
-            (Number(item[1]) > 0)
-              ? `${item[0]}=${Number(item[1])}`
-              : `${item[0]}='${item[1]}'`
-          )
-        })
-      const whereId = `id = ${id}`
-      updateItemModel(data, whereId, (err, result) => {
-        if (result.affectedRows) {
-          res.status(201).send({
-            success: true,
-            message: 'item has been updated',
-            newData: req.body
-          })
+    const defSearch = 'color_name'
+    const defSort = 'created_at'
+    let { searchKey, searchValue, sortKey, sortValue, and } = features(req.query, defSearch, defSort)
+    const { page, limit, limiter } = pagination.pagePrep(req.query)
+    and =`and item_id = ${id}`
+    try {
+      const [{name, description, seller_id, subcategory_id, created_at}] = await getItemPlain(id)
+      const result = await viewItemsModel(searchKey, searchValue, sortKey, sortValue, limiter, and, 'item_details')
+      const dataItem = {name, description, seller_id, subcategory_id, created_at}
+      console.log(dataItem)
+      const [{count}] = await viewCountItemsModel(searchKey, searchValue, and, 'item_details') || 0
+      console.log(count)
+       if (result.length) {
+          const pageInfo = pagination.paging(count, page, limit, table, req)
+          return responseStandard(res, 'Detail Items', {...dataItem, ...{data: result}, ...{pageInfo}})
         } else {
-          console.log(err)
-          res.status(500).send({
-            success: false,
-            message: 'The id you choose is invalid!'
-          })
+          const pageInfo = pagination.paging(count, page, limit, table, req)
+          return responseStandard(res, 'There is no item in the list', pageInfo, 400, false)
         }
-      })
-    } else {
-      res.status(201).send({
-        success: false,
-        message: 'There is no updates on data. All field must be filled with the correct data type!'
-      })
+    } catch (err) {
+      console.log(err)
+      return responseStandard(res, err.message, {}, 500, false)
     }
   },
-  updatePartialItem: (req, res) => {
-    const { price = '' } = req.body
-    const { id } = req.params
-    const bodyInput = Object.entries(req.body).filter(item => item[1].trim())
-    if (bodyInput.length && ((price > 0) || price === '')) {
-      const data = bodyInput.map(item => {
-        item[1] = sanitize(item[1])
-        return (Number(item[1]) > 0) ? `${item[0]}=${Number(item[1])}` : `${item[0]}='${item[1]}'`
-      })
-      const whereId = `id = ${id}`
-      console.log(data)
-      updateItemModel(data, whereId, (err, result) => {
-        if (!err) {
-          res.status(201).send({
-            success: true,
-            message: 'Your item\'s property has been updated'
-          })
+  createItem: (requires) => {
+    return async (req, res) => {
+      const {role_id, id:user_id} = req.user
+      console.log('we are on create Item')
+      try {
+        if ((role_id === 1) || (role_id === 3)) {
+          console.log('coba gini')
+          let form = itemFormController(req.body, requires)
+          let {itemDetails} = form
+          let keys = [form.detailKey]
+          form = form.form
+          Object.assign(form[0], {seller_id: user_id})
+          let img = arrayImagetoDB(req.files)
+          console.log('INI IMG!')
+          console.log(img)
+          keys.push(img.keys)
+          form.push(img.imagePrep)
+          const result = await createItemModel(res, keys, ...form)
+          if (result.length){
+            return responseStandard(res, 'item has been created', {data:{...{item_id: result[0].insertId},...form[0],itemDetails,...img.imgData}}, 201)
+          } else {
+            req.files && imgRemover(res, req.files)
+            return responseStandard(res, 'internal server error', {}, 500, false)
+          }
         } else {
-          console.log(err)
-          res.status(400).send({
-            success: false,
-            message: 'Internal Server Error'
-          })
+          req.files && imgRemover(res, req.files)
+          return responseStandard(res, 'Forbidden access!', {}, 500, false)
         }
-      })
-    } else {
-      let message = ''
-      const message1 = 'At least one property is updatted'
-      const message2 = 'Price must be number and not zero'
-      !(bodyInput.length) ? message = message1 : message = message2
-      res.status(500).send({
-        success: false,
-        message: message
-      })
-    }
-  },
-  deleteItem: (req, res) => {
-    const { id } = req.params
-    console.log(id)
-    deleteItemModel(id, (err, result) => {
-      if (result.affectedRows) {
-        console.log(result)
-        res.status(201).send({
-          success: true,
-          message: `Item with id ${id} has been deleted`
-        })
-      } else {
+      } catch (err) {
         console.log(err)
-        res.status(400).send({
-          success: false,
-          message: 'The id you choose is invalid!'
-        })
+        req.files && imgRemover(res, req.files)
+        return responseStandard(res, err.message, {}, 500, false)
       }
-    })
+    }
+  },
+  createItemDetail: async (req, res) => {
+    const {role_id, adminId} = req.user
+    console.log(role_id)
+    console.log(adminId)
+    if (((role_id === 1 || role_id === 2) && adminId) || (role_id === 3)) {
+      const schema = joi.object({
+        item_id: joi.number().integer().required(),
+        color_name: joi.string().required(),
+        stock: joi.number().required(),
+        hex: joi.string().required(),
+        price: joi.number().integer().required()
+      })
+      const {value: data, error} = schema.validate(req.body)
+      const colName = Object.keys(data)
+      const colValue = arrayValSanitizer(Object.values(data))
+      console.log(data)
+      if (error){
+        console.log(error)
+        return responseStandard(res, error.message, {}, 400, false)
+      } else {
+        try {
+          const result = await createItemModel(colName, colValue, 'item_details')
+          Object.assign(data, {id: result.insertId})
+          return responseStandard(res, 'detail item has been created', {data}, 201)
+        } catch (err) {
+          console.log(err)
+          return responseStandard(res, err.message, {}, 500, false)
+        }
+      }
+    } else {
+      return responseStandard(res, 'Forbidden access!', {}, 500, false)
+    }
+  },
+  updateItem: requires => {
+    return async (req, res) => {
+      const {id: user_id, role_id, adminId} = req.user
+      try {
+        let {id} = req.params
+        let itemData = await getDetailItem(id, table)
+        let detailRows = await getFromItemDetails(id)
+        let {seller_id} = itemData[0]
+        console.log(detailRows)
+        if (((role_id === 1 || role_id === 2) && adminId) 
+          || (role_id === 3) && (seller_id === user_id)) {
+          
+          console.log('this is req.files')
+          console.log(req.files)
+          console.log(detailRows)
+          let data = itemFormController(req.body, requires, detailRows, Number(id))
+          let {form, keys} = data
+          let {imageKeysUpdate, imageValsUpdate, imageKeysNew, imageValsNew, imageResult} = await updateImgtoDB(id, req.files)
+          console.log(imageKeysUpdate)
+          form.push(imageValsUpdate, imageValsNew)
+          keys.push(imageKeysUpdate, imageKeysNew)
+          let result = await updateItemModelNew(res, keys, ...form, id, requires)
+          console.log(result)
+          if (result.length){
+            return responseStandard(res, 'item has been updated', {updatedItem:{...data.form[0],
+              itemDetailsUpdate: data.itemDetailsUpdate,
+              itemDetailsNew: data.itemDetailsNew,
+              imageResult}}, 201)
+          } else {
+            responseStandard(res, 'internal server error', {}, 500, false)
+          }
+        
+        } else {
+          req.files && imgRemover(res, req.files)
+          return responseStandard(res, 'Forbidden access!', {}, 500, false)
+        }
+      } catch (err) {
+        console.log(err)
+        req.files && imgRemover(res, req.files)
+        return responseStandard(res, err.message, {}, 500, false)
+      }
+    }
+  },
+  deleteItem: async (req, res) => {
+    const {id: user_id, role_id, adminId} = req.user
+    try{
+      const { id } = req.params
+      let itemData = await getDetailItem(id, table)
+      let {seller_id} = itemData[0]
+      if (((role_id === 1 || role_id === 2) && adminId) 
+        || (role_id === 3) && (seller_id === user_id)) {
+        const searchKey = `item_id = ${id} AND name`
+        const delImages = await viewItemsModel(searchKey, '', 'created_at', 'DESC', '', '', 'item_images')
+        const result = await deleteItemModel(id) 
+        if(result.affectedRows){
+          console.log(delImages)
+          imgRemover(res, delImages, 0)
+          return responseStandard(res, 'item on id: '+id+' has been deleted', {})
+        } else {
+          return responseStandard(res, 'The id you choose is invalid', {}, 400, false)
+        }
+      } else {
+        return responseStandard(res, 'Forbidden access!', {}, 500, false)
+      }
+    } catch (err) {
+      console.log(err)
+      return responseStandard(res, err.message, {}, 500, false)
+    }
+  },
+  deleteItemDetail: async (req, res) => {
+    const {id: user_id, role_id, adminId} = req.user
+    try{
+      const { id } = req.params
+      let {item_id} = await getFromItemDetails(id)
+      let {seller_id} = await getDetailItem(item_id, table)
+      if (((role_id === 1 || role_id === 2) && adminId) 
+        || (role_id === 3) && (seller_id === user_id)) {
+        const result = await deleteItemModel(id, 'item_details') 
+        if(result.affectedRows){
+          return responseStandard(res, 'Detail item has been deleted', {})
+        } else {
+          return responseStandard(res, 'The id you choose is invalid', {}, 400, false)
+        }
+      } else {
+        return responseStandard(res, 'Forbidden access!', {}, 500, false)
+      }
+    } catch (err) {
+      console.log(err)
+      return responseStandard(res, err.message, {}, 500, false)
+    }
   }
 }

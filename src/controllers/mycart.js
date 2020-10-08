@@ -2,6 +2,9 @@ const express = require('express')
 const app = express()
 const bodyParser = require('body-parser')
 const sanitize = require('../helpers/dataSanitizer')
+const joi = require('joi')
+const responseStandard = require('../helpers/response')
+
 
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
@@ -11,12 +14,19 @@ const {
   createMycartsModel,
   getMycartModel,
   viewMycartsModel,
+  viewAllItemsModelCount,
   viewCountMycartsModel,
   getCountMycartModel,
   updateMycartModel,
-  deleteMycartModel
+  deleteMycartModel,
+  getMyCartModel,
+  getMyCartModelbyUserId
 
 } = require('../models/mycart')
+
+const {
+  getDetailItem
+} = require('../models/items')
 
 const {
   getItemModel
@@ -28,354 +38,143 @@ const table = 'carts'
 
 // POST
 module.exports = {
-  createMycart: (req, res) => {
-    const itemId = Number(req.body.item_id.trim())
-    const userId = Number(req.body.user_id.trim())
-    const andValue = `AND (item_id = ${itemId})`
-    console.log(itemId)
-    console.log(userId)
-    getItemModel(itemId, (_err, result) => {
-      if (result.length) {
-        getMycartModel(userId, andValue, 0, 5, (_err0, result0) => {
-          if (!result0.length) {
-            const dataKey = Object.keys(req.body)
-            const dataValue = Object.values(req.body)
-              .filter(item => Number(item.trim()) > 0)
-              .map(item => Number(item.trim()))
-            // console.log(name)
-            if (dataKey.length === dataValue.length) {
-              createMycartsModel(dataKey, dataValue, (err, result) => {
-                if (!err) {
-                  res.status(201).send({
-                    success: true,
-                    message: 'item has been created',
-                    data: {
-                      id: result.insertId,
-                      ...req.body
-                    }
-                  })
-                } else {
-                  console.log(err)
-                  res.status(500).send({
-                    success: false,
-                    message: 'Internal Server Error'
-                  })
-                }
-              })
+  createMycart: async (req, res) => {
+    let {id: user_id, role_id} = req.user
+    if(role_id === 4 || role_id === 1) {
+      let carts = joi.object({
+        itemdetails_id: joi.number().required(),
+        quantity: joi.number().required()
+      })
+      let {value: data, error} = carts.validate(req.body)
+      if (error) {
+        return responseStandard(res, error.message, {}, 401, false)
+      } else {
+        try {
+          let {itemdetails_id} = data
+          const getRes = await getMyCartModel(user_id, itemdetails_id)
+          console.log(getRes)
+          if (getRes.length) {
+            const update = await updateMycartModel(data, getRes[0].id)
+            if (update.affectedRows) {
+              return responseStandard(res, 'cart has been updated!', {data}, 201) 
             } else {
-              res.status(400).send({
-                success: false,
-                message: 'Quantity should not be 0!'
-              })
+              return responseStandard(res, 'Internal server error', 500, false)
             }
-          } else {
-            res.status(400).send({
-              success: false,
-              message: 'product is already being added! use patch or put instead'
-            })
           }
-        })
-      } else {
-        res.status(400).send({
-          success: false,
-          message: 'product is null!'
-        })
-      }
-    })
-  },
-
-  viewMycart: (req, res) => {
-    const count = 0
-    const defSearch = 'user_id'
-    const defSort = 'date_added'
-    const { searchKey, searchValue, sortKey, sortValue } = features(req.query, defSearch, defSort)
-    const { page, limit, offset } = pagination.pagePrep(req.query)
-    viewMycartsModel(searchKey, searchValue, sortKey, sortValue, limit, offset, (err, result) => {
-      if (!err) {
-        if (result.length) {
-          viewCountMycartsModel(searchKey, searchValue, (_err, data) => {
-            // console.log(data)
-            const { count } = data[0]
-            const pageInfo = pagination.paging(count, page, limit, table, req)
-            res.status(201).send({
-              success: true,
-              message: 'List of Carts',
-              data: result,
-              pageInfo
-            })
-          })
-        } else {
-          const pageInfo = pagination.paging(count, page, limit, table, req)
-          res.status(201).send({
-            success: true,
-            message: 'There is no item in the list',
-            pageInfo
-          })
+          Object.assign(data, {user_id: user_id})
+          const [{item_id}] = await getDetailItem(data.itemdetails_id)
+          Object.assign(data, {user_id, item_id})
+          const result = await createMycartsModel(data)
+          Object.assign(data, {id: result.insertId})
+          return responseStandard(res, 'item has been created', {data}, 201) 
+        } catch (err) {
+          console.log(err)
+          return responseStandard(res, err.message, {}, 500, false)
         }
-      } else {
-        console.log(err)
-        res.status(500).send({
-          sucess: false,
-          message: 'Internal Server Error'
-        })
       }
-    })
-  },
-
-  getDetailMyCart: (req, res) => {
-    const { userId } = req.params
-    const count = 0
-    console.log(userId)
-    const { filter = { item_id: 0 } } = req.query
-    const andValue = Object.entries(filter)
-      .filter(item => (Number(item[1])) || !(item[1] == 0))
-      .map(item =>
-        (Number(item[1]))
-          ? `AND ${item[0]} = ${Number(item[1])}`
-          : `AND ${item[0]} = '${sanitize(item[1])}'`)
-      .join(' ') || ''
-    console.log('andValue :' + andValue)
-    const { page, limit, offset } = pagination.pagePrep(req.query)
-    getMycartModel(userId, andValue, offset, limit, (err, result) => {
-      if (!err) {
-        if (result.length) {
-          getCountMycartModel(userId, andValue, (_err, data) => {
-            console.log(data)
-            const { count } = data[0]
-            const pageInfo = pagination.paging(count, page, limit, table, req)
-            res.status(201).send({
-              success: true,
-              message: `List of items from the user id number ${userId}'s cart`,
-              totalPrice: data[0].totalPrice,
-              data: result,
-              pageInfo
-
-            })
-          })
-        } else {
-          const pageInfo = pagination.paging(count, page, limit, table, req)
-          res.status(201).send({
-            success: true,
-            message: 'There is no items in the list',
-            pageInfo
-          })
-        }
-      } else {
-        console.log(err)
-        res.status(500).send({
-          sucess: false,
-          message: 'Internal Server Error'
-        })
-      }
-    })
-  },
-
-  updateMycart: (req, res) => {
-    let { add = 0, subtract = 0, quantity = 0, itemId = 0 } = req.body
-    let qty = { add: Number(add), subtract: Number(subtract), quantity: Number(quantity) }
-    console.log(qty)
-    itemId = Number(itemId)
-    const { cartId } = req.query
-    const { userId } = req.params
-    let andValue = `and carts.id = ${cartId}`;
-    [qty] = Object.entries(qty).filter(item => Number(item[1]) > 0)
-    console.log('qty obj entries: ' + qty[0])
-    if (qty.length === 2 && itemId) {
-      getMycartModel(userId, andValue, 0, 1, (_err, result) => {
-        console.log(_err)
-        if (result[0].quantity) {
-          console.log('quantity: ' + result[0].quantity)
-          console.log('itemIdSelected: ' + result[0].item_id)
-          const itemIdSelected = result[0].item_id
-          const quantity = result[0].quantity
-          if (qty[0] === 'add') {
-            qty[1] = quantity + qty[1]
-            qty[0] = 'quantity'
-          } else if (qty[0] === 'subtract') {
-            qty[1] = quantity - qty[1]
-            qty[0] = 'quantity'
-          }
-          if ((itemId === 0) || (itemId === itemIdSelected)) {
-            const queryUpdate = `${qty[0]} = ${qty[1]},`
-            updateMycartModel(queryUpdate, cartId, (err1, result1) => {
-              if (result1.affectedRows) {
-                res.status(201).send({
-                  success: true,
-                  message: 'item has been updated',
-                  quantity: qty[0],
-                  newData: req.body
-                })
-              } else {
-                console.log(err1)
-                res.status(500).send({
-                  success: false,
-                  message: 'forbidden request'
-                })
-              }
-            })
-          } else {
-            andValue = `AND (item_id = ${itemId})`
-            getMycartModel(userId, andValue, 0, 1, (_err0, result0) => {
-              if (!result0.length) {
-                const qry2 = `, item_id = ${itemId},`
-                const queryUpdate = `${qty[0]} = ${qty[1]} ${qry2}`
-                updateMycartModel(queryUpdate, cartId, (err1, result1) => {
-                  if (result1.affectedRows) {
-                    res.status(201).send({
-                      success: true,
-                      message: 'item has been updated',
-                      newData: req.body
-                    })
-                  } else {
-                    console.log(err1)
-                    res.status(500).send({
-                      success: false,
-                      message: 'Can not update the item'
-                    })
-                  }
-                })
-              } else {
-                res.status(500).send({
-                  success: false,
-                  message: 'You already have item with same id! do patch or chose another item!'
-                })
-              }
-            })
-          }
-        } else {
-          res.status(500).send({
-            success: true,
-            message: 'cart id you inputted is not here!'
-          })
-        }
-      })
     } else {
-      res.status(500).send({
-        success: false,
-        message: 'There is no updates on data. All field must be filled with the correct data type!'
-      })
+      return responseStandard(res, 'Forbidden access!', {}, 500, false)
     }
   },
+  updateMycart: (requires = 0)  => {
+    return async (req, res) => {
+      let {id: user_id, role_id} = req.user
+      const {id} = req.params
 
-  updatePatchMycart: (req, res) => {
-    let { add = 0, subtract = 0, quantity = 0, itemId = 0 } = req.body
-    let qty = { add: Number(add), subtract: Number(subtract), quantity: Number(quantity) }
-    console.log(qty)
-    itemId = Number(itemId)
-    const { cartId } = req.query
-    const { userId } = req.params
-    let andValue = `and carts.id = ${cartId}`
-    console.log('qty before obj entries: ' + qty)
-    qty = Object.entries(qty).filter(item => Number(item[1]) > 0)
-      [qty] = qty
-    console.log(qty)
-    qty = qty || ['null', 0]
-    if (qty.length <= 2 || itemId) {
-      getMycartModel(userId, andValue, 0, 1, (_err, result) => {
-        if (result[0]) {
-          console.log(_err)
-          console.log('quantity: ' + result[0].quantity)
-          console.log('itemIdSelected: ' + result[0].item_id)
-          const itemIdSelected = result[0].item_id
-          const quantity = result[0].quantity
-          let qry1 = ''
-          let qry2 = ''
-          const queryUpdate = `${qry1} ${qry2}`
-          if (qty[0] === 'add') {
-            qty[1] = quantity + qty[1]
-            qty[0] = 'quantity'
-            qry1 = `${qty[0]} = ${qty[1]},`
-          } else if (qty[0] === 'subtract') {
-            qty[1] = quantity - qty[1]
-            qty[0] = 'quantity'
-            qry1 = `${qty[0]} = ${qty[1]}`
-          } else if (qty[0] === 'quantity') {
-            qry1 = `${qty[0]} = ${qty[1]},`
-          } else {
-            qry1 = ''
+      try {
+        let [cartId] = await getMyCartModelbyUserId(id)
+        if(role_id === 1 || 
+          user_id === cartId.user_id) {
+          let carts = {
+            itemdetails_id: joi.number(),
+            quantity: joi.number()
           }
-          console.log(qry1)
-          if ((itemId === 0) || (itemId === itemIdSelected)) {
-            qry2 = `item_id = ${itemIdSelected}`
-            console.log(queryUpdate)
-            updateMycartModel(queryUpdate, cartId, (err1, result1) => {
-              console.log(err1)
-              console.log(result1)
-              if (!err1) {
-                res.status(201).send({
-                  success: true,
-                  message: 'item has been updated',
-                  quantity: qty[0],
-                  newData: req.body
-                })
-              } else {
-                console.log(err1)
-                res.status(500).send({
-                  success: false,
-                  message: 'forbidden request'
-                })
-              }
-            })
+          requires ? carts = joi.object({...carts}).fork(Object.keys(carts), (item) => item.required()) : carts= joi.object({...carts})
+          let {value: data, error} = carts.validate(req.body)
+          if (error) {
+            return responseStandard(res, error.message, {}, 401, false)
           } else {
-            andValue = `AND (item_id = ${itemId})`
-            getMycartModel(userId, andValue, 0, 1, (_err0, result0) => {
-              if (!result0.length) {
-                const qry2 = `item_id = ${itemId},`
-                const queryUpdate = `${qry1} ${qry2}`
-                updateMycartModel(queryUpdate, cartId, (err1, result1) => {
-                  if (result1.affectedRows) {
-                    res.status(201).send({
-                      success: true,
-                      message: 'item has been updated',
-                      newData: req.body
-                    })
-                  } else {
-                    console.log(err1)
-                    res.status(500).send({
-                      success: false,
-                      message: 'Can not update the item'
-                    })
-                  }
-                })
+            let {itemdetails_id} = data
+            if (itemdetails_id) {
+              let getRes = await getDetailItem(data.itemdetails_id)
+              console.log(getRes[0].item_id)
+              if(!getRes.length){
+                return responseStandard(res, 'there is no item in that id!', {}, 400, false)
               } else {
-                res.status(500).send({
-                  success: false,
-                  message: 'You already have item with same id! do patch or chose another item!'
-                })
+                Object.assign(data, {item_id: getRes[0].item_id})
               }
-            })
+            }
+            const result = await updateMycartModel(data, id)
+            if(result.affectedRows){
+              return responseStandard(res, 'your cart has been updated!', {data}, 201) 
+            } else {
+              return responseStandard(res, 'Internal server error', 500, false)
+            }
           }
         } else {
-          res.status(500).send({
-            success: true,
-            message: 'cart id you inputted is not here!'
-          })
+          return responseStandard(res, 'Forbidden access!', {}, 500, false)
         }
-      })
-    } else {
-      res.status(500).send({
-        success: false,
-        message: 'There is no updates on data. All field must be filled with the correct data type!'
-      })
+      } catch (err) {
+        console.log(err)
+        return responseStandard(res, err.message, {}, 500, false)
+      }
     }
   },
-
-  deleteMycart: (req, res) => {
-    const { id } = req.params
-    console.log(id)
-    deleteMycartModel(id, (err, result) => {
-      if (result.affectedRows) {
-        res.status(201).send({
-          success: true,
-          message: `Cart with id ${id} has been deleted`
-        })
+  viewMycart: (detail=0) =>{
+    return async (req, res) => {
+      let {id: user_id, role_id} = req.user
+      if(role_id === 4 || role_id === 1) {
+        let{item_id} = req.params
+        let msg= (detail ? 'All carts' : `carts on id ${item_id}`)
+        let and=0
+        let group=0
+        item_id ? and = Number(item_id) : and
+        detail ? group = 'detail' : group
+        const defSearch = 'item_info.name'
+        const defSort = 'date_added'
+        const {searchValue} = features(req.query, defSearch, defSort)
+        const { page, limit, limiter } = pagination.pagePrep(req.query)
+        try {
+          const result = await viewMycartsModel(user_id, searchValue, limiter, and, group)
+          const [{count}] = await viewCountMycartsModel(user_id, searchValue, and, group) || 0
+          if (result.length){
+            const pageInfo = pagination.paging(count, page, limit, table, req)
+            return responseStandard(res, 'Items in your carts', {...{data: result}, ...{pageInfo}})
+          } else {
+            const pageInfo = pagination.paging(count, page, limit, table, req)
+            return responseStandard(res, msg, pageInfo, 400, false)
+          }
+        } catch (err) {
+          console.log(err)
+          return responseStandard(res, err.message, {}, 500, false)
+        }
       } else {
-        console.log(err)
-        res.status(400).send({
-          success: false,
-          message: 'The id cart you choose is invalid!'
-        })
+        return responseStandard(res, 'Forbidden access!', {}, 500, false)
       }
-    })
+    }
+  },
+  deleteMycart: (delItem=0) => {
+    return async (req, res) => {
+      let {id: user_id, role_id} = req.user
+      if(role_id === 4 || role_id === 1) {
+        const {id} = req.params
+        let msg = ''
+        delItem ? msg='Item has been removed from carts' : msg='Item details has been removed from carts'
+        delItem ? delItem = {item_id: id} : delItem = {id}
+        try {
+          const result = deleteMycartModel(delItem, user_id) 
+          if(result.affectedRows){
+            return responseStandard(res, msg, {}, 201) 
+          } else {
+            return responseStandard(res, 'Internal server error', 500, false)
+          }
+        } catch (err) {
+          console.log(err)
+          return responseStandard(res, err.message, {}, 500, false)
+        }
+      } else {
+        return responseStandard(res, 'Forbidden access!', {}, 500, false)
+      }
+    }
   }
 }
