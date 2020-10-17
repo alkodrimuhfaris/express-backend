@@ -27,7 +27,7 @@ app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 
 // provide static
-app.use('/uploads', express.static('./Assets/Public/uploads'))
+app.use('/Uploads', express.static('./Assets/Public/Uploads'))
 
 app.use('/items', itemsRouter)
 app.use('/categories', categoriesRouter)

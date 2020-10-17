@@ -56,8 +56,9 @@ module.exports = {
       and = ''
     }
     query = `
-    SELECT ${tables}.id as cart_id, user_id, item_info.itemdetails_id, item_info.item_id, SUM(price*quantity) as price, SUM(quantity) as quantity, item_info.name as product_name, item_info.color_name as product_color, date_added
-    date_added
+    SELECT ${tables}.id as cart_id, user_id, item_info.itemdetails_id, item_info.item_id,
+    price, SUM(quantity) as quantity, item_info.name as product_name,
+    item_info.color_name as product_color, date_added, product_image_1 as cartImg
     FROM ${tables}
     LEFT JOIN (${itemStoreTable}) AS item_info
     ON ${tables}.itemdetails_id = item_info.itemdetails_id

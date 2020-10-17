@@ -114,5 +114,5 @@ module.exports = {
             FROM ${tables}
             WHERE id = ${id}`
     return await getFromDB(query)
-  },
+  }
 }

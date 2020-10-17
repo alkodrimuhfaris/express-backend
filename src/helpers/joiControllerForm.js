@@ -6,13 +6,11 @@ const requiring = (requires, joiObj) => {
 	if (requires === 'put') {
 		console.log(joiObj)
 		joiObj = joi.object({...joiObj}).fork(Object.keys(joiObj), item => item.required().messages({
-      'string.empty': 'Forms can not be empty!',
-      'any.required': 'All Forms must be filled'
+		'string.empty': 'Forms can not be empty!',
+		'any.required': 'All Forms must be filled'
     })) 
 	} else if (requires === 'patch') {
-		joiObj = joi.object({...joiObj}).fork(Object.keys(joiObj), item => item.optional().messages({
-      'string.empty': 'Forms can not be empty!'
-    }))
+		joiObj = joi.object({...joiObj}).fork(Object.keys(joiObj), item => item.optional().allow(null, '', 0))
 	} else if (requires === 'create') {
 		joiObj = joi.object({...joiObj}).fork(Object.keys(joiObj), item => item.messages({
       'any.required': 'All Forms must be filled'
@@ -23,8 +21,9 @@ const requiring = (requires, joiObj) => {
 
 const sanitizeForm = (data, requires) => {
 	data.forEach(form => {
-		Object.keys(form).forEach((key) => (!form[key]) && delete form[key])
-		requires!=='create' && Object.keys(form).length && Object.assign(form, {updated_at: Date.now()})
+		Object.keys(form).forEach((key) => (!form[key] || ((typeof(form[key] === 'string') && !form[key].trim()))) && delete form[key])
+		let dateNow = new Date().toISOString().slice(0, 19).replace('T', ' ')
+		requires!=='create' && Object.keys(form).length && Object.assign(form, {updated_at:dateNow})
 	})
 	return data
 }
@@ -105,11 +104,15 @@ module.exports = {
 			primary_address: joi.boolean().required()
 		}
 
+		console.log(body)
+
 		address = requiring(requires, address)
+
 
 		let {value: data, error} = address.validate(body)
 		if (error) throw new Error(error)
-		requires!=='create' && Object.assign(data, {updated_at: Date.now()})
+		let dateNow = new Date().toISOString().slice(0, 19).replace('T', ' ')
+		requires!=='create' && Object.assign(data, {updated_at: dateNow})
 		return data
 	},
 	itemFormController: (body, requires='create', detailRows=[], item_id=0) => {
@@ -118,9 +121,9 @@ module.exports = {
 			description: joi.string(),
 			subcategory_id: joi.number().required(),
 			color_name: joi.array().items(joi.string()).required(),
-      stock: joi.array().items(joi.number()).required(),
-      hex: joi.array().items(joi.string()),
-      price: joi.array().items(joi.number()).required()
+			stock: joi.array().items(joi.number()).required(),
+			hex: joi.array().items(joi.string()),
+			price: joi.array().items(joi.number()).required()
 		}
 
 		itemForm = requiring(requires, itemForm)
@@ -166,8 +169,9 @@ module.exports = {
 				let dataItemDetailNew = dataItemDetail.map(x=>x)
 				let n=0
 				for (let element of detailRows) {
-					itemDetailsValsUpdate[n].push(element.id, Date.now())
-					Object.assign(dataItemDetailUpdate[n], {id:element.id}, {updated_at:Date.now()})
+					let dateNow = new Date().toISOString().slice(0, 19).replace('T', ' ')
+					itemDetailsValsUpdate[n].push(element.id, dateNow)
+					Object.assign(dataItemDetailUpdate[n], {id:element.id}, {updated_at:dateNow})
 					n++
 				}
 				console.log('itemDetailsValsUpdate sekarang')

@@ -25,7 +25,7 @@ module.exports = async (res, arr, requires='create') => {
               Boolean(el[1].create) && delete el[1].create
             } else {
               console.log(el[1])
-              el[1][0].forEach(element => { element.push(result[0].insertId) })
+              Array.isArray(el[1][0]) && el[1][0].forEach(element => { element.push(result[0].insertId) })
             }
           }
           setResult = await getFromDB(el[0], el[1])

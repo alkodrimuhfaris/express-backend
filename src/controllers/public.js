@@ -12,7 +12,9 @@ const {
   viewItemsModel,
   viewCountItemsModel,
   viewAllItemsModel,
-  viewAllItemsModelCount
+  viewAllItemsModelCount,
+  getRatings,
+  getDetailItem
 } = require('../models/items')
 
 const {
@@ -65,6 +67,20 @@ module.exports =  {
 	    }
   	}
   },
+  getDetailColor: async (req, res) => {
+    const { id } = req.params
+    try {
+      const result = await getDetailItem(id, 'item_details')
+       if (result.length) {
+          return responseStandard(res, 'Detail Items', {...{data: result}})
+        } else {
+          return responseStandard(res, 'There is no detail item in the list!', pageInfo, 400, false)
+        }
+    } catch (err) {
+      console.log(err)
+      return responseStandard(res, err.message, {}, 500, false)
+    }
+  },
   getDetailItem: async (req, res) => {
     const { id } = req.params
     const defSearch = 'color_name'
@@ -76,12 +92,37 @@ module.exports =  {
     try {
       const [dataItem] = await getItemPlain(id)
       const result = await viewItemsModel(searchKey, searchValue, sortKey, sortValue, limiter, and, 'item_details')
+      let rating = await getRatings(id)
+      console.log('rating length')
+      console.log(rating.length)
+      !rating.length && (rating = [{
+        ratingAvg: 0,
+        stars5: 0,
+        star5bar: 0,
+        stars4: 0,
+        star4bar: 0,
+        stars3: 0,
+        star3bar: 0,
+        stars2: 0,
+        star2bar: 0,
+        stars1: 0,
+        star1bar: 0,
+        ratingCount:0}])
+      let [{ratingAvg, ratingCount}] = rating
+      let ratingBar=[rating[0].star5bar, rating[0].star4bar, rating[0].star3bar, rating[0].star2bar, rating[0].star1bar]
+      let starCount=[rating[0].stars5, rating[0].stars4, rating[0].stars3, rating[0].stars2, rating[0].stars1]
       console.log(dataItem)
       const [{count}] = await viewCountItemsModel(searchKey, searchValue, and, 'item_details') || 0
       console.log(count)
        if (dataItem) {
+          rating = [{
+            ratingAvg,
+            ratingBar,
+            starCount,
+            ratingCount
+          }]
           const pageInfo = pagination.paging(count, page, limit, tables, req)
-          return responseStandard(res, 'Detail Items', {...dataItem, ...{productDetails: result}, ...{pageInfo}})
+          return responseStandard(res, 'Detail Items', {...dataItem, ...{rating: rating}, ...{productDetails: result}, ...{pageInfo}})
         } else {
           const pageInfo = pagination.paging(count, page, limit, tables, req)
           return responseStandard(res, 'There is no item in the list', pageInfo, 400, false)

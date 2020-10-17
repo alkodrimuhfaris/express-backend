@@ -12,8 +12,8 @@ const router = Router()
 
 router.get('/', getAllAddress)
 router.post('/', createAddres)
-router.put('/:id', updateAddressModel(1))
-router.patch('/:id', updateAddressModel(0))
+router.put('/:id', updateAddressModel('put'))
+router.patch('/:id', updateAddressModel('patch'))
 router.delete('/:id', deleteAddress)
 router.get('/:id', getDetailAddress)
 

@@ -73,6 +73,7 @@ module.exports = {
 				console.log('this is the try')
 				console.log(result)
 				if(result[0]){
+					delete result[0].password
 					return responseStandard(res, 'Get user from id = '+user_id+' is success', {choosenData: result[0]})
 				} else {
 					return responseStandard(res, 'User ID is invalid!', {}, 400, false)
@@ -94,7 +95,7 @@ module.exports = {
 		let avatar = 0
 		if (req.file) {
 		imgKey = req.file.fieldname
-		imgVal = sanitize(req.file.destination+'/'+req.file.filename)
+		imgVal = sanitize('Uploads/'+req.file.filename)
 	}
 		try {
 		 	if (role_id === 4||
@@ -113,15 +114,15 @@ module.exports = {
     		console.log(queries)
     		const results = await updateUserModel(queries)
     		if (results.length) {
-    			(imgVal && avatar) && fs.unlinkSync(avatar)
+    			(imgVal && avatar) && fs.unlinkSync(process.env.PUBLIC_UPLOAD_FOLDER+avatar)
 	    		return responseStandard(res, 'user on id: '+user_id+' has been updated', {data:{...form[0], ...form[1]}}, 201)
     		}
 	    } else {
-	    	(imgVal && avatar) && fs.unlinkSync(avatar)
+	    	(imgVal && avatar) && fs.unlinkSync(process.env.PUBLIC_UPLOAD_FOLDER+avatar)
 	    	return responseStandard(res, 'Forbidden Access!', {}, 403, false)
 		    }
   		} catch (err) {
-  			(imgVal && avatar) && fs.unlinkSync(avatar)
+  			(imgVal && avatar) && fs.unlinkSync(process.env.PUBLIC_UPLOAD_FOLDER+avatar)
 	    	console.log(err)
 	    	return responseStandard(res, err.message, {}, 500, false)
     	}
@@ -139,7 +140,7 @@ module.exports = {
 		    	const result = await deleteUserModel(user_id)
 		    	console.log(result)
 		    	if(result.affectedRows){
-		    		Boolean(data[0].avatar) && fs.unlinkSync(data[0].avatar)
+		    		Boolean(data[0].avatar) && fs.unlinkSync(process.env.PUBLIC_UPLOAD_FOLDER+data[0].avatar)
 		    		return responseStandard(res, 'user on id: '+user_id+' has been deleted', {})
 		    	} else {
 		    		return responseStandard(res, 'The id you choose is invalid', {}, 400, false)

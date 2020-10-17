@@ -4,12 +4,14 @@ const {
   getDetailItem,
   getCategories,
   detailCategories,
-  detailSubCategories
+  detailSubCategories,
+  getDetailColor
 } = require('../controllers/public')
 
 
 const router = Router()
 
+router.get('/products/detail/:id', getDetailColor)
 router.get('/products/:id', getDetailItem)
 router.get('/products', viewItems(0))
 router.get('/new', viewItems('new'))

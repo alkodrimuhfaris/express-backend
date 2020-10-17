@@ -66,7 +66,7 @@ module.exports = {
           Object.assign(data, {user_id, item_id})
           const result = await createMycartsModel(data)
           Object.assign(data, {id: result.insertId})
-          return responseStandard(res, 'item has been created', {data}, 201) 
+          return responseStandard(res, 'Item has been added to cart!', {data}, 201) 
         } catch (err) {
           console.log(err)
           return responseStandard(res, err.message, {}, 500, false)

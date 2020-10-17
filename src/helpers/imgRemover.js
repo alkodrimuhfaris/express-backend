@@ -10,7 +10,7 @@ module.exports = (res, arr, del = 1) => {
 		  for (let item of arr) {
 		  	del
 		    ? item = item.destination+'/'+item.filename
-		    : item = item.image_url
+		    : item = process.env.PUBLIC_UPLOAD_FOLDER+item.image_url
 		    fs.unlinkSync(item)
 			}
 	  } else {
@@ -18,7 +18,7 @@ module.exports = (res, arr, del = 1) => {
 	  		        [item] = item
 	  		        return item
 	  		      }))
-	  	arr = arr.destination+'/'+arr.filename
+	  	arr = process.env.PUBLIC_UPLOAD_FOLDER+arr.filename
 		  fs.unlinkSync(arr)
 		}
 	}

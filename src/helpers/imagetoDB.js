@@ -11,8 +11,8 @@ module.exports = (arr) => {
   if (!arr.fieldname) {
 	  let n = 1
 	  for (let item of arr){
-      Object.assign(img, {[item.fieldname+'_'+n]: item.destination+'/'+item.filename})
-      imgArrVal.push([item.fieldname+'_'+n, item.destination+'/'+item.filename])
+      Object.assign(img, {[item.fieldname+'_'+n]: 'Uploads/'+item.filename})
+      imgArrVal.push([item.fieldname+'_'+n, 'Uploads/'+item.filename])
       angka.push(n)
       console.log(imgArrVal)
       console.log(angka)
@@ -27,8 +27,8 @@ module.exports = (arr) => {
     // console.log(n)
     return data = {imagePrep: data, imgData: img, keys: colImgKey}
   } else {
-  	Object.assign(img, {[arr.fieldname]: arr.destination+'/'+arr.filename})
-    let data = [[arr.fieldname, arr.destination+'/'+arr.filename]]
+  	Object.assign(img, {[arr.fieldname]: 'Uploads/'+arr.filename})
+    let data = [[arr.fieldname, 'Uploads/'+arr.filename]]
     // const result = await createItemImgModel(data, 'item_images')
     // console.log(result)
     return data = {imagePrep: data, imgData: img}

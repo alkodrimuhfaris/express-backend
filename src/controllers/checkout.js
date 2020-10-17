@@ -39,9 +39,7 @@ module.exports = {
 			}
 			console.log(keyCity)
 			console.log(valsCity)
-			console.log(results)
 			if (results.length) {
-				console.log(results)
 				return responseStandard(res, 'List of Items', {rajaOngkir: results})
 			} else {
 				console.log(results)

@@ -54,7 +54,7 @@ module.exports = {
 					return responseStandard(res, 'List of Items', {...{data: result}, ...{pageInfo}})
 				} else {
 					const pageInfo = pagination.paging(count, page, limit, table, req)
-					return responseStandard(res, 'There is no item in the list', pageInfo, 400, false)
+					return responseStandard(res, 'There is no address in the list', pageInfo)
 				}
 			} catch (err) {
 				return responseStandard(res, err.message, {}, 500, false)
@@ -85,7 +85,7 @@ module.exports = {
 		let {id: user_id, role_id} = req.user
 		if(role_id === 4|1) {
 			try {
-				const form = await userAddress(req.body, 1)
+				const form = userAddress(req.body)
 				Object.assign(form, {user_id})
 				let {primary_address} = form
 				primary_address && (form.primary_address = await primaryAddressTogler(res, primary_address, user_id))
