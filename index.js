@@ -1,7 +1,6 @@
 require('dotenv').config() //setting environment
 const express = require('express')
 const app = express()
-const upload = require('./src/helpers/multerHelper')
 const cors = require('cors')
 
 app.use(cors())
