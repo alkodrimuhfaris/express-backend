@@ -2,11 +2,10 @@ const multer = require('multer')
 const path = require('path')
 const responseStandard = require('../helpers/response')
 
-module.exports = (field, requires = 0) => {
+module.exports = (field) => {
   return (req, res, next) => {
-
     // storage
-    const maxSize = process.env.MAX_FILE_SIZE*1000*1024
+    const maxSize = process.env.MAX_FILE_SIZE * 1000 * 1024
     const storage = multer.diskStorage({
       destination: (req, _file, cb) => {
         cb(null, './Assets/Public/Uploads')
@@ -25,7 +24,7 @@ module.exports = (field, requires = 0) => {
       if (mimetype && extname) {
         return cb(null, true)
       } else {
-        req.fileValidationError = 'You have wrong file type!'
+        req.fileValidationError = 'only jpg, jpeg or png files are allowed!'
         return cb(new Error(req.fileValidationError), false)
       }
     }
@@ -45,8 +44,6 @@ module.exports = (field, requires = 0) => {
         return responseStandard(res, err.message, {}, 500, false)
       } else if (req.fileValidationError) {
         return responseStandard(res, req.fileValidationError, {}, 400, false)
-      } else if (!req.file && requires) {
-        return  responseStandard(res, 'select image to upload!', {}, 400, false)
       } else if (err) {
         console.log(err)
         return responseStandard(res, err.message, {}, 500, false)
@@ -56,4 +53,3 @@ module.exports = (field, requires = 0) => {
     })
   }
 }
-

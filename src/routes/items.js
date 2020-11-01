@@ -1,20 +1,13 @@
 const { Router } = require('express')
 const {
   viewItems,
-  getDetailItem,
   createItem,
-  createItemDetail,
   updateItem,
-  updateItemDetail,
-  updatePartialItem,
-  updatePartialItemDetail,
   deleteItem,
   deleteItemDetail
 } = require('../controllers/items')
 const authMiddleware = require('../middlewares/auth')
 const multerArray = require('../middlewares/multerArray')
-const multerSingle = require('../middlewares/multerSingle')
-const multerFields = require('../middlewares/multerFields')
 
 const router = Router()
 

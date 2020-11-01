@@ -1,52 +1,113 @@
-const db = require('../helpers/db')
 const getFromDB = require('../helpers/promiseForSQL')
+const pagination = require('../helpers/pagination')
+const queryGenerator = require('../helpers/queryGenerator')
 
+const logicForTable = require('../helpers/logicForTable')
 const table = 'categories'
 let query = ''
 
 module.exports = {
   createCategoryModel: async (name, tables = table) => {
-    query = `INSERT INTO ${tables} (name)
-            VALUE ('${name}')`
-    return await getFromDB(query) 
+    query = `INSERT INTO ${tables} SET ?`
+    return await getFromDB(query, name)
   },
-  getCategorybyID: async (id, tables=table) => {
+  getCategorybyID: async (id, tables = table) => {
     query = `SELECT *
             FROM ${tables}
             where id = ${id}`
     return await getFromDB(query)
   },
-  viewAllCategories: async (searchKey, searchValue, column, sort, limiter, and='', tables = table) => {
+  viewAllCategories: async (req, tables = table) => {
+    const { searchArr, date, orderArr } = queryGenerator(req)
+
+    // query for search and limit
+    const additionalQuery = [searchArr, date].filter(item => item).map(item => `(${item})`).join(' AND ')
+
+    // query for where (if it exist)
+    const where = additionalQuery ? ' WHERE ' : ''
+
+    const { limiter } = pagination.pagePrep(req)
+
     query = `SELECT * 
             FROM ${tables}
-            WHERE ${searchKey}
-            LIKE '%${searchValue}%'
-            ${and}
-            ORDER BY ${column} ${sort}
+            LEFT JOIN (
+              SELECT count(id) as total_product, category_id
+              FROM items
+              GROUP BY category_id
+            ) as items
+            ON ${tables}.id = items.category_id
+            ${where}
+            ${additionalQuery}
+            ORDER BY
+              ${orderArr}
             ${limiter}`
+    console.log(query)
     return await getFromDB(query)
   },
-  viewJoinAllCategories: async (searchKey, searchValue, column, sort, limiter, joinTable, and='', tables = table) => {
+  viewAllCategoriesCount: async (req, tables = table) => {
+    const { searchArr, date } = queryGenerator(req)
+
+    // query for search and limit
+    const additionalQuery = [searchArr, date].filter(item => item).map(item => `(${item})`).join(' AND ')
+
+    // query for where (if it exist)
+    const where = additionalQuery ? ' WHERE ' : ''
+
+    query = `SELECT count(*) as count
+            FROM ${tables}
+            ${where}
+            ${additionalQuery}`
+    return await getFromDB(query)
+  },
+  viewJoinAllCategories: async (req, data = {}, tables = table) => {
+    const joinTable = logicForTable.countItemsForCategories(req)
+
+    req = {
+      ...req,
+      sort: {
+        totalProducts: 'DESC'
+      }
+    }
+
+    const { searchArr, date, orderArr, dataArr, prepStatement } = queryGenerator({ ...req, data })
+
+    // query for search and limit
+    const additionalQuery = [searchArr, date, dataArr].filter(item => item).map(item => `(${item})`).join(' AND ')
+
+    // query for where (if it exist)
+    const where = additionalQuery ? ' WHERE ' : ''
+
+    const { limiter } = pagination.pagePrep(req)
+
     query = `SELECT * 
             FROM ${tables}
             JOIN (${joinTable}) as count
             ON ${tables}.id = count.id
-            WHERE ${searchKey}
-            LIKE '%${searchValue}%'
-            ${and}
-            ORDER BY ${column} ${sort}
+            ${where}
+            ${additionalQuery}
+            ORDER BY 
+            ${orderArr}
             ${limiter}`
-    return await getFromDB(query)
+    return await getFromDB(query, prepStatement)
   },
-  countAllCategories: async (searchKey, searchValue, and='', tables=table) => {
+  countAllCategories: async (req, data = {}, tables = table) => {
+    const { searchArr, date, dataArr, prepStatement } = queryGenerator({ ...req, data })
+
+    // query for search and limit
+    const additionalQuery = [searchArr, date, dataArr].filter(item => item).map(item => `(${item})`).join(' AND ')
+
+    // query for where (if it exist)
+    const where = additionalQuery ? ' WHERE ' : ''
+
     query = `SELECT count (*) as count
             FROM ${tables}
-            WHERE ${searchKey}
-            LIKE '%${searchValue}%'
-            ${and}`
-    return await getFromDB(query)
+            ${where}
+            ${additionalQuery}`
+    return await getFromDB(query, prepStatement)
   },
-  viewCategoriesModel: async (searchKey, searchValue, column, sort, limiter, cb, tables = table) => {
+  viewCategoriesModel: async (searchKey, searchValue, column, sort, page, limit, tables = table) => {
+    const { limiter } = pagination.pagePrep({ page, limit })
+
     query = `SELECT ${tables}.id as id, ${tables}.name as category,
             ${tables}.created_at as 'created at', items.id as item_id, price, items.name as product,
             COUNT(${tables}.id) as 'total product'
@@ -101,16 +162,16 @@ module.exports = {
             ) AS newTable`
     return await getFromDB(query)
   },
-  updateCategoriesModel: async (name, id, tables = table) => {
+  updateCategoriesModel: async (data, id, tables = table) => {
     query = `UPDATE ${tables}
-            SET name='${name}', updated_at=NOW()
-            WHERE id=${id}`
-    return await getFromDB(query)
+            SET ?
+            WHERE ?`
+    return await getFromDB(query, [data, id])
   },
   deleteCategoryModel: async (id, tables = table) => {
     query = `DELETE
             FROM ${tables}
-            WHERE id = ${id}`
-    return await getFromDB(query)
+            WHERE ?`
+    return await getFromDB(query, [id])
   }
 }

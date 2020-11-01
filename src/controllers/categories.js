@@ -2,187 +2,146 @@ const express = require('express')
 const app = express()
 const bodyParser = require('body-parser')
 const sanitize = require('../helpers/dataSanitizer')
+const response = require('../helpers/response')
+const fs = require('fs')
 
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 app.use(express.static('public'))
 
-const {
-  createCategoryModel,
-  viewCategoriesModel,
-  viewCountCategoriesModel,
-  getCategoryModel,
-  getCategoryCountModel,
-  updateCategoriesModel,
-  deleteCategoryModel
-
-} = require('../models/categories')
-
-const {
-  updateItemModel
-} = require('../models/items')
+const categoryModel = require('../models/categories')
 
 const pagination = require('../helpers/pagination')
-const features = require('../helpers/features')
-const table = 'categories'
+const joi = require('joi')
 
 // POST
 module.exports = {
-  createCategory: (req, res) => {
-    let { name } = req.body
-    name = sanitize(name)
-    console.log(name)
-    if (name) {
-      createCategoryModel(name, (err, result) => {
-        if (!err) {
-          res.status(201).send({
-            success: true,
-            message: 'item has been created',
-            data: {
-              id: result.insertId,
-              ...req.body
-            }
-          })
-        } else {
-          console.log(err)
-          res.status(500).send({
-            success: false,
-            message: 'Internal Server Error'
-          })
-        }
-      })
-    } else {
-      res.status(400).send({
-        success: false,
-        message: 'All field must be filled!'
-      })
+  viewCategories: async (req, res) => {
+    const path = 'categories'
+    const { page, limit } = req.query
+    try {
+      const results = await categoryModel.viewAllCategories(req.query)
+      const [{ count }] = await categoryModel.viewAllCategoriesCount(req.query) || 0
+      const pageInfo = pagination.paging(count, page, limit, path, req.query)
+      if (results.length) {
+        return response(res, 'List of Categories', { results, pageInfo })
+      } else {
+        return response(res, 'There is no item in the list', { pageInfo })
+      }
+    } catch (error) {
+      console.log(error)
+      return response(res, 'Internal server error', {}, 500, false)
     }
   },
-  viewCategories: (req, res) => {
-    const count = 0
-    const defSearch = 'categories.name'
-    const defSort = 'items.created_at'
-    const { searchKey, searchValue, sortKey, sortValue } = features(req.query, defSearch, defSort)
-    const { page, limit, offset, limiter } = pagination.pagePrep(req.query)
-    viewCategoriesModel(searchKey, searchValue, sortKey, sortValue, limiter, (err, result) => {
-      if (!err) {
-        if (result.length) {
-          viewCountCategoriesModel(searchKey, searchValue, (_err, data) => {
-            console.log(_err)
-            const { count } = data[0]
-            const pageInfo = pagination.paging(count, page, limit, table, req)
-            res.status(201).send({
-              success: true,
-              message: 'List of categories',
-              data: result,
-              pageInfo
-            })
-          })
-        } else {
-          const pageInfo = pagination.paging(count, page, limit, table, req)
-          res.status(201).send({
-            success: true,
-            message: 'There is no category in the list',
-            pageInfo
-          })
-        }
-      } else {
-        console.log(err)
-        res.status(500).send({
-          sucess: false,
-          message: 'Internal Server Error'
-        })
-      }
-    })
-  },
-  getDetailCategories: (req, res) => {
+  viewCategoriesById: async (req, res) => {
     const { id } = req.params
-    const count = 0
-    const defSort = 'price'
-    const defSearch = 'product'
-    const { sortKey, sortValue } = features(req.query, defSearch, defSort)
-    const { page, limit, offset } = pagination.pagePrep(req.query)
-    getCategoryModel(id, sortKey, sortValue, limit, offset, (err, result) => {
-      console.log(err)
-      if (!err) {
-        if (result.length) {
-          getCategoryCountModel(id, (_err, data) => {
-            const { count } = data[0]
-            const pageInfo = pagination.paging(count, page, limit, table, req)
-            res.status(201).send({
-              success: true,
-              message: 'List of items on category',
-              category: result[0].category,
-              data: result,
-              pageInfo
-            })
-          })
-        } else {
-          const pageInfo = pagination.paging(count, page, limit, table, req)
-          res.status(201).send({
-            success: true,
-            message: 'There is no items in the list',
-            pageInfo
-          })
-        }
+    if (!Number(id)) { return response(res, 'id must be a number', {}, 400, false) }
+    try {
+      const results = await categoryModel.getCategorybyID(Number(id))
+      if (results.length) {
+        return response(res, 'Categories on id: ' + id, { results })
       } else {
-        console.log(err)
-        res.status(500).send({
-          sucess: false,
-          message: 'Internal Server Error'
-        })
+        return response(res, 'There is no category in here')
       }
-    })
-  },
-  updateCategories: (req, res) => {
-    let { name } = req.body
-    const { id } = req.params
-    name = sanitize(name)
-    console.log(name)
-    if (name.trim()) {
-      updateCategoriesModel(name, id, (err, result) => {
-        if (result.affectedRows) {
-          res.status(201).send({
-            success: true,
-            message: 'item has been updated',
-            newData: req.body
-          })
-        } else {
-          console.log(err)
-          res.status(500).send({
-            success: false,
-            message: 'The id you choose is invalid!'
-          })
-        }
-      })
-    } else {
-      res.status(201).send({
-        success: false,
-        message: 'There is no updates on data. All field must be filled with the correct data type!'
-      })
+    } catch (error) {
+      console.log(error)
+      return response(res, 'Internal server error', {}, 500, false)
     }
   },
-  deleteCategory: (req, res) => {
+  createCategory: async (req, res) => {
+    let imgKey = ''
+    let imgVal = ''
+    if (req.file) {
+      imgKey = req.file.fieldname
+      imgVal = sanitize('Uploads/' + req.file.filename)
+    }
+    const { id: user_id, role_id } = req.user
+    if (!user_id || !role_id || role_id === 4) {
+      imgVal && fs.unlinkSync(process.env.PUBLIC_UPLOAD_FOLDER + imgVal)
+      return response(res, 'Forbidden Access!', {}, 403, false)
+    }
+    const schema = joi.object({
+      name: joi.string()
+    })
+    const { value: data, error } = schema.validate(req.body)
+    if (error) {
+      imgVal && fs.unlinkSync(process.env.PUBLIC_UPLOAD_FOLDER + imgVal)
+      return response(res, error.message, {}, 400, false)
+    }
+    Object.assign(data, { [imgKey]: imgVal })
+    try {
+      const result = await categoryModel.createCategoryModel(data)
+      if (result.insertId) {
+        return response(res, 'Category has been created', { data: { id: result.insertId, ...data } })
+      } else {
+        imgVal && fs.unlinkSync(process.env.PUBLIC_UPLOAD_FOLDER + imgVal)
+        return response(res, 'Internal Server error', {}, 500, false)
+      }
+    } catch (error) {
+      console.log(error)
+      imgVal && fs.unlinkSync(process.env.PUBLIC_UPLOAD_FOLDER + imgVal)
+      return response(res, error.message, {}, 500, false)
+    }
+  },
+  updateCategories: async (req, res) => {
+    let imgKey = ''
+    let imgVal = ''
+    if (req.file) {
+      imgKey = req.file.fieldname
+      imgVal = sanitize('Uploads/' + req.file.filename)
+    }
+    const { id: user_id, role_id } = req.user
+    if (!user_id || !role_id || role_id === 4) {
+      imgVal && fs.unlinkSync(process.env.PUBLIC_UPLOAD_FOLDER + imgVal)
+      return response(res, 'Forbidden Access!', {}, 403, false)
+    }
     const { id } = req.params
-    console.log(id)
-    deleteCategoryModel(id, (err, result) => {
+    if (!Number(id)) { return response(res, 'Id must be a number!', {}, 400, false) }
+    const schema = joi.object({
+      name: joi.string()
+    })
+    const { value: data, error } = schema.validate(req.body)
+    if (error) {
+      imgVal && fs.unlinkSync(process.env.PUBLIC_UPLOAD_FOLDER + imgVal)
+      return response(res, error.message, {}, 400, false)
+    }
+    Object.assign(data, { [imgKey]: imgVal })
+    try {
+      const [{ categories_image }] = categoryModel.getCategorybyID(Number(id))
+      const result = await categoryModel.updateCategoriesModel(data, { id: Number(id) })
       if (result.affectedRows) {
-        const setCategory = `category_id = ${null}`
-        const searchCategory = `category_id = ${id}`
-        updateItemModel(setCategory, searchCategory, (_err, _result) => {
-          console.log(result)
-          res.status(201).send({
-            success: true,
-            message: `Category with id ${id} has been deleted`
-          })
-        })
+        categories_image && fs.unlinkSync(process.env.PUBLIC_UPLOAD_FOLDER + categories_image)
+        return response(res, 'item has been updated!', { data })
       } else {
-        console.log(err)
-        res.status(400).send({
-          success: false,
-          message: 'The id you choose is invalid!'
-        })
+        (imgVal) && fs.unlinkSync(process.env.PUBLIC_UPLOAD_FOLDER + imgVal)
+        return response(res, 'Internal server error', {}, 500, false)
       }
-    })
+    } catch (error) {
+      imgVal && fs.unlinkSync(process.env.PUBLIC_UPLOAD_FOLDER + imgVal)
+      console.log(error)
+      return response(res, error.message, {}, 500, false)
+    }
+  },
+  deleteCategory: async (req, res) => {
+    const { id } = req.params
+    if (!Number(id)) { return response(res, 'Id must be a number!', {}, 400, false) }
+    console.log(id)
+    const { id: user_id, role_id } = req.user
+    if (!user_id || !role_id || role_id === 4) {
+      return response(res, 'Forbidden Access!', {}, 403, false)
+    }
+    try {
+      const [{ categories_image }] = categoryModel.getCategorybyID(Number(id))
+      const result = await categoryModel.deleteCategoryModel(Number(id))
+      if (result.affectedRows) {
+        categories_image && fs.unlinkSync(process.env.PUBLIC_UPLOAD_FOLDER + categories_image)
+        return response(res, 'item has been deleted!')
+      } else {
+        return response(res, 'Internal server error', {}, 400, false)
+      }
+    } catch (error) {
+      console.log(error)
+      return response(res, error.message, {}, 500, false)
+    }
   }
 }

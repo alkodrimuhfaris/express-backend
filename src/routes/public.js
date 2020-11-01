@@ -4,10 +4,8 @@ const {
   getDetailItem,
   getCategories,
   detailCategories,
-  detailSubCategories,
   getDetailColor
 } = require('../controllers/public')
-
 
 const router = Router()
 
@@ -18,6 +16,5 @@ router.get('/new', viewItems('new'))
 router.get('/popular', viewItems('popular'))
 router.get('/categories', getCategories)
 router.get('/categories/:id', detailCategories)
-router.get('/categories/subcategory/:id', detailSubCategories)
 
 module.exports = router
