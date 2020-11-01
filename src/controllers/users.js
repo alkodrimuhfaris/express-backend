@@ -138,7 +138,7 @@ module.exports = {
       return responseStandard(res, 'Forbidden Access!', {}, 403, false)
     }
   },
-  updateBalance: async (req, res) => {
+  topUpBalance: async (req, res) => {
     const { id } = req.user
     let { nominal } = req.body
     if (!Number(nominal)) { return responseStandard(res, 'Input the right nominal!', {}, 400, false) }

@@ -166,7 +166,7 @@ module.exports = {
   },
   updateItemModel: async (data, dataId, tables = table) => {
     query = `UPDATE ${tables}
-            SET ?, updated_at=NOW()
+            SET ?
             WHERE ${dataId}`
     return await getFromDB(query, data)
   },
@@ -330,5 +330,11 @@ module.exports = {
             ON item_details.item_id = items.item_id
             WHERE id = ?`
     return await getFromDB(query, itemDetailsId)
+  },
+  updateStock: async (stock = {}, itemDetailsId = {}, tables = 'item_details') => {
+    query = `UPDATE ${tables}
+            SET ?
+            WHERE ?`
+    return await getFromDB(query, [stock, itemDetailsId])
   }
 }

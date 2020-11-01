@@ -83,6 +83,13 @@ module.exports = {
             AND ?`
     return await getFromDB(query, [user_id, primaryOrAddressId])
   },
+  getAddress: async (user_id = {}, primaryOrAddressId = { primary_address: 1 }, tables = table) => {
+    query = `SELECT *
+            FROM ${tables}
+            WHERE ?
+            AND ?`
+    return await getFromDB(query, [user_id, primaryOrAddressId])
+  },
   getSellerCityId: async (item_details_id = {}, primaryOrAddressId = { primary_address: 1 }, tables = table) => {
     query = `SELECT city_id, item_details_id
             FROM user_address as ${tables}

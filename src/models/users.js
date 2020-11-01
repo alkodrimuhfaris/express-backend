@@ -10,7 +10,7 @@ module.exports = {
             WHERE ?`
     return await getFromDB(query, email)
   },
-  getUserBalance: async (id, tables = table) => {
+  getUserBalance: async (id = {}, tables = table) => {
     query = `SELECT balance
             FROM ${tables}
             WHERE ?`

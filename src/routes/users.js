@@ -4,7 +4,7 @@ const {
   getDetailUser,
   updateUser,
   deleteUser,
-  updateBalance,
+  topUpBalance,
   changePassword
 } = require('../controllers/users')
 const multerSingle = require('../middlewares/multerSingle')
@@ -12,7 +12,7 @@ const multerSingle = require('../middlewares/multerSingle')
 const router = Router()
 
 router.get('/all', viewUsers)
-router.post('/balance', updateBalance)
+router.post('/balance/topup', topUpBalance)
 router.put('/', multerSingle('avatar'), updateUser('put'))
 router.patch('/', multerSingle('avatar'), updateUser('patch'))
 router.delete('/', deleteUser)
