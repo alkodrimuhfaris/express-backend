@@ -80,6 +80,62 @@ module.exports = {
             WHERE ?`
     return await getFromDB(query, customer_id)
   },
+  getAllMerchantTransaction: async (req, customer_id, transaction_id, tables = table2) => {
+    const { limiter } = pagination.pagePrep(req)
+
+    query = `SELECT * FROM ${tables}
+            LEFT JOIN (
+              SELECT SUM(quantity) invoice ${table3}
+              GROUP BY invoice
+            ) AS ${table3}
+            ON ${tables}.invoice = ${table3}.invoice
+            WHERE customer_id = ?
+            AND transaction_id = ?
+            ORDER BY created_at DESC
+            ${limiter}`
+    return await getFromDB(query, [customer_id, transaction_id])
+  },
+  countAllMerchantTransaction: async (customer_id, transaction_id, tables = table2) => {
+    query = `SELECT count(*) as count
+            FROM ${tables}
+            LEFT JOIN (
+              SELECT SUM(quantity) invoice ${table3}
+              GROUP BY invoice
+            ) AS ${table3}
+            ON ${tables}.invoice = ${table3}.invoice
+            WHERE customer_id = ?
+            AND transaction_id = ?`
+    return await getFromDB(query, [customer_id, transaction_id])
+  },
+  getMerchantTransactionById: async (transactionMerchantId, customer_id, tables = table2) => {
+    query = `SELECT * 
+            FROM ${tables}
+            WHERE customer_id = ?
+            AND id = ?`
+    return await getFromDB(query, [transactionMerchantId, customer_id])
+  },
+  getAllMerchantDetailTransaction: async (req, transactionMerchantId, customer_id, tables = table3) => {
+    const { limiter } = pagination.pagePrep(req)
+
+    query = `SELECT *
+            FROM ${tables}
+            WHERE transaction_merchant_id = ?
+            ${limiter}`
+    return await getFromDB(query, [customer_id, transactionMerchantId])
+  },
+  countAllMerchantDetailTransaction: async (transactionMerchantId, customer_id, tables = table3) => {
+    query = `SELECT count(*) as count
+            FROM ${tables}
+            WHERE transaction_merchant_id = ?`
+    return await getFromDB(query, [customer_id, transactionMerchantId])
+  },
+  getAllMerchantDetailTransactionById: async (transactionMerchantId, customer_id, tables = table3) => {
+    query = `SELECT *
+            FROM ${tables}
+            WHERE customer_id = ?
+            WHERE transaction_merchant_id = ?`
+    return await getFromDB(query, [customer_id, transactionMerchantId])
+  },
   getDetailTransactionById: async (customer_id, id, tables = table3) => {
     query = `SELECT * FROM ${tables}
             LEFT JOIN (

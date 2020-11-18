@@ -79,31 +79,63 @@ module.exports = {
       return responseStandard(res, 'Forbidden access!', {}, 500, false)
     }
   },
+  getAllProvince: async (req, res) => {
+    try {
+      const { data } = await axios.get(process.env.URL_RAJAONGKIR_PROVINCE, { params: { key: process.env.API_KEY_RAJAONGKIR } })
+      const { results } = data.rajaongkir
+      return responseStandard(res, 'list of all province', { results })
+    } catch (err) {
+      console.log(err)
+      return responseStandard(res, err.message, {}, 500, false)
+    }
+  },
+  getAllCityInProvince: async (req, res) => {
+    let {id: province} = req.params
+    if (!Number(province)) { return responseStandard(res, 'id province must be a number', {}, 400, false) }
+    province = Number(province)
+    try {
+      const { data } = await axios.get(process.env.URL_RAJAONGKIR_CITY, { params: { key: process.env.API_KEY_RAJAONGKIR, province } })
+      let { results } = data.rajaongkir
+      results = results.map( data => {
+        const {city_id, province_id, province, type, city_name } = data
+        data = {
+          city_id,
+          province_id,
+          province,
+          city: type + ' ' + city_name,
+        }
+        return data
+      })
+      return responseStandard(res, 'list of all province', { results })
+    } catch (err) {
+      console.log(err)
+      return responseStandard(res, err.message, {}, 500, false)
+    }
+  },
   createAddres: async (req, res) => {
     const { id: user_id, role_id } = req.user
-    if (role_id === 4 | 1) {
-      try {
-        const form = userAddress(req.body)
-        const { city_id } = form
-        console.log(process.env.URL_RAJAONGKIR_CITY)
-        const { data } = await axios.get(process.env.URL_RAJAONGKIR_CITY, { params: { key: process.env.API_KEY_RAJAONGKIR, id: city_id } })
-        const { results } = data.rajaongkir
-        Object.assign(form, { user_id, city: results.city_name, city_type: results.type })
-        const { primary_address } = form
-        primary_address && (form.primary_address = await primaryAddressTogler(res, primary_address, user_id))
-        const result = await createAddressModel(form)
-        if (result.affectedRows) {
-          Object.assign(form, { id: result.insertId })
-          return responseStandard(res, 'Address created successfully!', { address: form })
-        } else {
-          return responseStandard(res, 'Internal server error', 500, false)
-        }
-      } catch (err) {
-        console.log(err)
-        return responseStandard(res, err.message, {}, 500, false)
-      }
-    } else {
+    if (!role_id) {
       return responseStandard(res, 'Forbidden access!', {}, 500, false)
+    }
+    try {
+      const form = userAddress(req.body)
+      const { city_id } = form
+      console.log(process.env.URL_RAJAONGKIR_CITY)
+      const { data } = await axios.get(process.env.URL_RAJAONGKIR_CITY, { params: { key: process.env.API_KEY_RAJAONGKIR, id: city_id } })
+      const { results } = data.rajaongkir
+      Object.assign(form, { user_id, city: results.city_name, city_type: results.type })
+      const { primary_address } = form
+      primary_address && (form.primary_address = await primaryAddressTogler(res, primary_address, user_id))
+      const result = await createAddressModel(form)
+      if (result.affectedRows) {
+        Object.assign(form, { id: result.insertId })
+        return responseStandard(res, 'Address created successfully!', { address: form })
+      } else {
+        return responseStandard(res, 'Internal server error', 500, false)
+      }
+    } catch (err) {
+      console.log(err)
+      return responseStandard(res, err.message, {}, 500, false)
     }
   },
   updateAddressModel: requires => {

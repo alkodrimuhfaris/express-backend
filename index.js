@@ -18,6 +18,7 @@ const addressRouter = require('./src/routes/address')
 const publicRouter = require('./src/routes/public')
 const checkoutRouter = require('./src/routes/checkout')
 const transactionRouter = require('./src/routes/transaction')
+const cityRouter = require('./src/routes/city')
 
 app.use(express.static('public'))
 
@@ -38,6 +39,7 @@ app.use('/mycart', authMiddleware, mycartsRouter)
 app.use('/users', authMiddleware, usersRouter)
 app.use('/public', publicRouter)
 app.use('/checkout', checkoutRouter)
+app.use('/city', cityRouter)
 app.use('/transaction', authMiddleware, transactionRouter)
 
 app.listen(8080, () => {

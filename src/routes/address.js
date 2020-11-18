@@ -4,7 +4,9 @@ const {
 	getDetailAddress,
 	createAddres,
 	updateAddressModel,
-	deleteAddress
+	deleteAddress,
+	getAllProvince,
+	getAllCityInProvince
 } = require('../controllers/address')
 
 
@@ -16,5 +18,7 @@ router.put('/:id', updateAddressModel('put'))
 router.patch('/:id', updateAddressModel('patch'))
 router.delete('/:id', deleteAddress)
 router.get('/:id', getDetailAddress)
+router.get('/province/', getAllProvince)
+router.get('/province/city/:id', getAllCityInProvince)
 
 module.exports = router

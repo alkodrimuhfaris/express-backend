@@ -58,6 +58,48 @@ module.exports = {
       return responseStandard(res, err.message, {}, 500, false)
     }
   },
+  getAllMerchantTransactionById: async (req, res) => {
+    let {id} = req.params
+    if (!Number(id)) { return responseStandard(res, 'Id must be a number!', {}, 400, false) }
+    id = Number(id)
+    const path = 'transaction/merchant/all' + id
+    const {id: customer_id} = req.user
+    if (!customer_id) { return responseStandard(res, 'Forbidden Access!', {}, 403, false) }
+    const { page, limit } = req.query
+    try {
+      const merchantTransaction = await transactionModel.getAllMerchantTransaction(req.query, customer_id, id)
+      const [{ count }] = await transactionModel.countAllMerchantTransaction(customer_id, id) || 0
+      const pageInfo = pagination.paging(count, page, limit, path, req)
+      if (!merchantTransaction.length) {
+        return responseStandard(res, 'There is no item in the list', {pageInfo})
+      }
+      return responseStandard(res, 'Merchant Transaction on transaction id: '+ id, {merchantTransaction, pageInfo})
+    } catch (err) {
+      console.log(err)
+      return responseStandard(res, err.message, {}, 500, false)
+    }
+  },
+  getAllMerchantDetailTransactionById: async (req, res) => {
+    let { id } = req.params
+    if (!Number(id)) { return responseStandard(res, 'Id must be a number!', {}, 400, false) }
+    id = Number(id)
+    const path = 'transaction/merchant/detail' + id
+    const {id: customer_id} = req.user
+    if (!customer_id) { return responseStandard(res, 'Forbidden Access!', {}, 403, false) }
+    const { page, limit } = req.query
+    try {
+      const merchantTransaction = await transactionModel.getAllMerchantDetailTransaction(req.query, id)
+      const [{ count }] = await transactionModel.countAllMerchantDetailTransaction(id) || 0
+      const pageInfo = pagination.paging(count, page, limit, path, req)
+      if (!merchantTransaction.length) {
+        return responseStandard(res, 'There is no item in the list', {pageInfo})
+      }
+      return responseStandard(res, 'Merchant Transaction on transaction id: '+ id, {merchantTransaction, pageInfo})
+    } catch (err) {
+      console.log(err)
+      return responseStandard(res, err.message, {}, 500, false)
+    }
+  },
   getDetailTransactionById: async (req, res) => {
     let { id } = req.params
     const { id: user_id } = req.user

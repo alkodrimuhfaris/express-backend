@@ -101,6 +101,7 @@ module.exports = {
       phone: joi.number().required(),
       address: joi.string().required(),
       city_id: joi.number().required(),
+      province_id: joi.number().required(),
       postal_code: joi.number().required(),
       primary_address: joi.boolean().required()
     }

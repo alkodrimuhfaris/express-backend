@@ -64,7 +64,7 @@ module.exports = {
         services: joi.array().items(joi.number()),
         address_id: joi.number()
       })
-      const { value: checkoutData, error } = carts.validate(req.body)
+      const { value: checkoutData, error } = carts.validate(req.query)
       if (error) { return responseStandard(res, error.message, {}, 400, false) }
 
       const { itemdetails_id, quantity, address_id, couriers, services } = checkoutData
