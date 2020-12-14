@@ -61,6 +61,7 @@ module.exports = {
     }
   },
   signupController: async (req, res) => {
+    console.log('tes')
     let { role_id } = req.params
     role_id = role_id === 'customer'
       ? 4
@@ -83,16 +84,17 @@ module.exports = {
 
       // create user
       const results = await user.createUser(userCredentials)
-
+      console.log(results)
       // add user_id for user detail
-      Object.assign(userDetail, { user_id: results[0].insertId })
+      console.log(userDetail)
+      Object.assign(userDetail, { user_id: results.insertId })
 
       // add user detail to database
       const userDetailResults = await userDetails.createUserDetails(userDetail)
-      if (results.length && userDetailResults.length) {
+      if (results.insertId && userDetailResults.insertId) {
         delete userCredentials.password
         delete userDetails.login
-        Object.assign(userCredentials, { id: results[0].insertId })
+        Object.assign(userCredentials, { id: results.insertId })
         return responseStandard(res, 'user has been created', { data: { ...userCredentials, ...userDetails } }, 201)
       } else {
         return responseStandard(res, 'Internal server error', {}, 500, false)

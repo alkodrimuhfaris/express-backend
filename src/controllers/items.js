@@ -106,7 +106,7 @@ module.exports = {
           })
 
           // get id from color table
-          const color_id = results[0].insertId
+          const color_id = results[0].id
 
           // create object for detail data
           const schemaDetail = joi.object({
