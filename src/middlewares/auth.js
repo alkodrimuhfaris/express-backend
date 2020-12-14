@@ -8,9 +8,7 @@ module.exports = async (req, res, next) => {
   if (authorization && authorization.startsWith('Bearer ')) {
     const token = authorization.slice(7, authorization.length)
     try {
-      console.log('jwt verify belum')
       req.user = jwt.verify(token, process.env.APP_KEY)
-      console.log('jwt verify sudah')
       console.log(req.user)
       if (req.user) {
         return await next()

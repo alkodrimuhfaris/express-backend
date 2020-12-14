@@ -3,20 +3,18 @@ const {
   viewItems,
   createItem,
   updateItem,
-  deleteItem,
-  deleteItemDetail
+  deleteItem
 } = require('../controllers/items')
 const authMiddleware = require('../middlewares/auth')
 const multerArray = require('../middlewares/multerArray')
+const roleChecker = require('../middlewares/roleChecker')
 
 const router = Router()
 
 router.get('/', viewItems)
-router.post('/', authMiddleware, multerArray('product_image'), createItem('create'))
-router.put('/:id', authMiddleware, multerArray('product_image'), updateItem('put'))
-router.patch('/:id', authMiddleware, multerArray('product_image'), updateItem('patch'))
-router.delete('/:id', authMiddleware, deleteItem)
-router.delete('/detail/:id', authMiddleware, deleteItemDetail)
+router.post('/', authMiddleware, multerArray('product_image'), createItem)
+router.patch('/:id', authMiddleware, roleChecker.paramsNumber, multerArray('product_image'), updateItem)
+router.delete('/:id', authMiddleware, roleChecker.paramsNumber, deleteItem)
 
 // router.get('/:id', getDetailItem)
 // router.put('/detail/:id', authMiddleware, updateItemDetail)

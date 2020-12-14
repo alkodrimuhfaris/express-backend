@@ -12,7 +12,7 @@ module.exports = {
   resetPassword: async (req, res) => {
     const { email } = req.body
 
-    const check = await userModel.checkUserExist({ email })
+    const check = await userModel.getuser({ email })
     let resetcode = check.length ? uuidv4() : ''
     resetcode = resetcode.slice(resetcode.length - 8).toUpperCase()
 
@@ -40,22 +40,31 @@ module.exports = {
       confirmNewPassword: joi.string().required().valid(joi.ref('newPassword'))
     })
     const { value: credentials, error } = schema.validate(req.body)
-    if (error) { return responseStandard(res, 'Error', { error: error.message }, 400, false) }
-
+    if (error) {
+      return responseStandard(res, 'Error', { error: error.message }, 400, false)
+    }
     try {
       let { resetcode, email, newPassword } = credentials
-      if (!resetcode) { return responseStandard(res, 'Please input reset code!', {}, 400, false) }
+      if (!resetcode) {
+        return responseStandard(res, 'Please input reset code!', {}, 400, false)
+      }
 
       newPassword = await bcrypt.hash(newPassword, 10)
 
-      const userData = await userModel.checkUserExist({ email })
-      if (!userData.length) { return responseStandard(res, 'User not found', {}, 400, false) }
+      const userData = await userModel.getuser({ email })
+      if (!userData.length) {
+        return responseStandard(res, 'User not found', {}, 400, false)
+      }
 
       const [{ reset_code, id }] = userData
-      if (!reset_code || reset_code !== resetcode) { return responseStandard(res, 'Reset Code doesnt match', {}, 400, false) }
+      if (!reset_code || reset_code !== resetcode) {
+        return responseStandard(res, 'Reset Code doesnt match', {}, 400, false)
+      }
 
       const update = await forgotPasswordModel.createResetCode({ reset_code: null }, { email })
-      if (!update.affectedRows) { return responseStandard(res, 'Reset code failed', {}, 400, false) }
+      if (!update.affectedRows) {
+        return responseStandard(res, 'Reset code failed', {}, 400, false)
+      }
 
       const patchPassword = await forgotPasswordModel.changePassword({ password: newPassword }, { id })
       if (patchPassword.affectedRows) {

@@ -64,14 +64,14 @@ module.exports = {
         birthdate: joi.string(),
         bio: joi.string(),
         gender: joi.string(),
-        phone: joi.number()
+        phone: joi.string()
       }
     } else if (role === 3) {
       console.log('were in seller path')
       userDetails = {
         store_description: joi.string(),
         store_name: joi.string().required(),
-        phone: joi.number().required()
+        phone: joi.string().required()
       }
     } else {
       console.log('role is wrong')

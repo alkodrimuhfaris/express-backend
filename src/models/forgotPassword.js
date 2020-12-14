@@ -15,7 +15,6 @@ module.exports = {
                 ${tables} 
                 SET ? 
                 WHERE ?`
-
     return await getFromDB(query, [password, id])
   }
 }

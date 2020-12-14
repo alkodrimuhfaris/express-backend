@@ -1,27 +1,9 @@
-const express = require('express')
-const app = express()
-const bodyParser = require('body-parser')
 const responseStandard = require('../helpers/response')
 
-app.use(bodyParser.urlencoded({ extended: false }))
-app.use(bodyParser.json())
-app.use(express.static('public'))
-
-const {
-  getItemPlain,
-  viewDetailItem,
-  viewDetailItemCount,
-  viewAllItemsModel,
-  viewAllItemsModelCount,
-  getRatings,
-  getDetailItem
-} = require('../models/items')
-
-const {
-  getCategorybyID,
-  countAllCategories,
-  viewJoinAllCategories
-} = require('../models/categories')
+const itemModel = require('../models/items')
+const itemDetailModel = require('../models/itemDetails')
+const ratings = require('../models/ratings')
+const categoryModel = require('../models/categories')
 
 const pagination = require('../helpers/pagination')
 
@@ -36,14 +18,11 @@ module.exports = {
         tables = 'public/popular'
       }
       try {
-        const result = await viewAllItemsModel(req.query, query)
-        const [{ count }] = await viewAllItemsModelCount(req.query, query) || 0
-        console.log(count)
-        if (result.length) {
-          const pageInfo = pagination.paging(count, page, limit, tables, req)
-          return responseStandard(res, 'List of Items', { data: result, pageInfo })
+        const { results, count} = await itemModel.getAllItem({}, req.query, query)
+        const pageInfo = pagination.paging(count, page, limit, tables, req)
+        if (count) {
+          return responseStandard(res, 'List of Items', { data: results, pageInfo })
         } else {
-          const pageInfo = pagination.paging(count, page, limit, tables, req)
           return responseStandard(res, 'There is no item in the list', pageInfo, 400, false)
         }
       } catch (err) {
@@ -55,9 +34,9 @@ module.exports = {
   getDetailColor: async (req, res) => {
     const { id } = req.params
     try {
-      const result = await getDetailItem(id, 'item_details')
-      if (result.length) {
-        return responseStandard(res, 'Detail Items', { ...{ data: result } })
+      const results = await itemDetailModel.getItemDetailsById(id)
+      if (results.length) {
+        return responseStandard(res, 'Detail Items', { results })
       } else {
         return responseStandard(res, 'There is no detail item in the list!', 400, false)
       }
@@ -69,12 +48,11 @@ module.exports = {
   getDetailItem: async (req, res) => {
     let { id } = req.params
     id = Number(id)
-    const tables = 'public/products/' + id
-    const { page, limit } = req.query
     try {
-      const [dataItem] = await getItemPlain(id)
-      const result = await viewDetailItem(req.query, id)
-      let rating = await getRatings(id)
+      const { results: dataItems } = await itemModel.getAllItem({ id })
+      const [dataItem] = dataItems
+      const result = await itemDetailModel.getItemDetailsByItemId(id)
+      let rating = await ratings.getRatings(id)
       console.log('rating length')
       console.log(rating.length)
       !rating.length && (rating = [{
@@ -94,10 +72,6 @@ module.exports = {
       const [{ ratingAvg, ratingCount }] = rating
       const ratingBar = [rating[0].star5bar, rating[0].star4bar, rating[0].star3bar, rating[0].star2bar, rating[0].star1bar]
       const starCount = [rating[0].stars5, rating[0].stars4, rating[0].stars3, rating[0].stars2, rating[0].stars1]
-      console.log(dataItem)
-      const [{ count }] = await viewDetailItemCount(id) || 0
-      const pageInfo = pagination.paging(count, page, limit, tables, req)
-      console.log(count)
       if (dataItem) {
         rating = [{
           ratingAvg,
@@ -105,9 +79,9 @@ module.exports = {
           starCount,
           ratingCount
         }]
-        return responseStandard(res, 'Detail Items', { dataItem: { ...dataItem, rating }, productDetails: result, pageInfo })
+        return responseStandard(res, 'Detail Items', { dataItem: { ...dataItem, rating }, productDetails: result })
       } else {
-        return responseStandard(res, 'There is no item in the list', pageInfo, 400, false)
+        return responseStandard(res, 'There is no item in the list')
       }
     } catch (err) {
       console.log(err)
@@ -118,11 +92,10 @@ module.exports = {
     const tables = 'public/categories/'
     const { page, limit } = req.query
     try {
-      const result = await viewJoinAllCategories(req.query)
-      const [{ count }] = await countAllCategories(req.query) || 0
+      const { results, count } = await categoryModel.viewAllCategories({}, req.query)
       const pageInfo = pagination.paging(count, page, limit, tables, req)
-      if (result.length) {
-        return responseStandard(res, 'List of Categories', { ...{ data: result }, ...{ pageInfo } })
+      if (count) {
+        return responseStandard(res, 'List of Categories', { results, pageInfo })
       } else {
         return responseStandard(res, 'There is no item in the list', pageInfo, 400, false)
       }
@@ -132,30 +105,30 @@ module.exports = {
     }
   },
   detailCategories: async (req, res) => {
-    let { id } = req.params
-    if (!Number(id)) { return responseStandard(res, 'Id must be a number!', {}, 400, false) }
-    id = Number(id)
-    const { page, limit } = req.query
+    const { id } = req.params
+    const path = 'public/categories' + id
+    const { limit, page } = req.query
+    const sort = req.query.sort ? req.query.sort : {}
     req.query = {
       ...req.query,
       sort: {
-        price: 'DESC'
+        price: 'DESC',
+        ...sort
       }
     }
-    const tables = 'public/categories' + id
     try {
-      const result = await viewAllItemsModel(req.query, '', { category_id: id })
-      const [{ count }] = await viewAllItemsModelCount(req.query, '', { category_id: id }) || 0
-      const [category] = await getCategorybyID(id)
-      const pageInfo = pagination.paging(count, page, limit, tables, req)
-      if (category) {
-        return responseStandard(res, 'items on subcategory with id: ' + id, { ...category, data: result, pageInfo })
+      const { results: category, count: categoryCount } = await categoryModel.viewAllCategories({ id })
+      if (categoryCount) {
+        const { results: items, count } = await itemModel.getAllItem({ category_id: id })
+        const pageInfo = pagination.paging(count, page, limit, path, req.query)
+        const msg = count ? 'Items on category id: ' + id : 'There is no items in here'
+        return responseStandard(res, msg, { category, items, pageInfo })
       } else {
-        return responseStandard(res, 'There is no item in the list', { pageInfo }, 400, false)
+        return responseStandard(res, 'There is no category in here')
       }
-    } catch (err) {
-      console.log(err)
-      return responseStandard(res, err.message, {}, 500, false)
+    } catch (error) {
+      console.log(error)
+      return responseStandard(res, 'Internal server error', {}, 500, false)
     }
   }
 }

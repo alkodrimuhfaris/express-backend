@@ -1,22 +1,19 @@
 const { Router } = require('express')
-const {
-  viewUsers,
-  getDetailUser,
-  updateUser,
-  deleteUser,
-  topUpBalance,
-  changePassword
-} = require('../controllers/users')
+const user = require('../controllers/users')
 const multerSingle = require('../middlewares/multerSingle')
+const roleChecker = require('../middlewares/roleChecker')
 
 const router = Router()
 
-router.get('/all', viewUsers)
-router.post('/balance/topup', topUpBalance)
-router.put('/', multerSingle('avatar'), updateUser('put'))
-router.patch('/', multerSingle('avatar'), updateUser('patch'))
-router.delete('/', deleteUser)
-router.get('/', getDetailUser)
-router.post('/password', changePassword)
+// admin get all user
+router.get('admin/all', roleChecker.admin, user.viewAllUsers)
+
+// user
+router.post('/balance/topup', user.topUpBalance)
+router.patch('/', multerSingle('avatar'), user.updateUser)
+router.delete('/', user.deleteUser)
+router.get('/', user.getUser)
+router.post('/password', user.changePassword)
+router.get('/detail/:id', roleChecker.paramsNumber, user.getUserById)
 
 module.exports = router

@@ -42,8 +42,8 @@ app.use('/checkout', checkoutRouter)
 app.use('/city', cityRouter)
 app.use('/transaction', authMiddleware, transactionRouter)
 
-app.listen(8080, () => {
-  console.log('App listening on port 8080')
+app.listen(8989, () => {
+  console.log('App listening on port 8989')
 })
 
 // nama repo: express-backend

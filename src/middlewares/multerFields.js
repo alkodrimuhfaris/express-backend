@@ -2,17 +2,16 @@ const multer = require('multer')
 const path = require('path')
 const responseStandard = require('../helpers/response')
 
-module.exports = (name, arrNum=4, maxCount=1) => {
+module.exports = (name, arrNum = 4, maxCount = 1) => {
   return (req, res, next) => {
-
-    let arr = []
-    for (let i = 1; i <= arrNum; i++){
-      arr.push({name: `${name}_${i}`, maxCount})
+    const arr = []
+    for (let i = 1; i <= arrNum; i++) {
+      arr.push({ name: `${name}_${i}`, maxCount })
     }
     console.log(arr)
 
     // storage
-    const maxSize = process.env.MAX_FILE_SIZE*1000*1024
+    const maxSize = process.env.MAX_FILE_SIZE * 1000 * 1024
     const storage = multer.diskStorage({
       destination: (req, _file, cb) => {
         cb(null, './Assets/Public/Uploads')
@@ -63,4 +62,3 @@ module.exports = (name, arrNum=4, maxCount=1) => {
     })
   }
 }
-

@@ -1,5 +1,5 @@
 module.exports = (query) => {
-  let { search, sort, date, price, data = {} } = query
+  let { search = {}, sort = { created_at: 'DESC' }, date = {}, price = {}, data = {} } = query
   let dataArr = []
   const prepStatement = []
   for (const prop in data) {
@@ -21,25 +21,29 @@ module.exports = (query) => {
 
   // filter date query
   date = date
-    ? date.map((item, i) => {
-        item = !item
+    ? Object.entries(date).map(([key, value]) => {
+        key = !(key && value)
           ? ''
-          : (i === 0)
-              ? `created_at >= "${item}"`
-              : `created_at <= "${item}"`
-        return item
+          : key === 'before'
+            ? `created_at <= "${value}"`
+            : key === 'after'
+              ? `created_at >= "${value}"`
+              : ''
+        return key
       }).filter(item => item).join(' AND ')
     : ''
 
   // filter price query
   price = price
-    ? price.map((item, i) => {
-        item = !item
+    ? Object.entries(price).map(([key, value]) => {
+        key = !(key && value)
           ? ''
-          : (i === 0)
-              ? `price >= ${Number(item)}`
-              : `price <= ${Number(item)}`
-        return item
+          : key === 'min'
+            ? `price >= "${Number(value)}"`
+            : key === 'max'
+              ? `price <= "${Number(value)}"`
+              : ''
+        return key
       }).filter(item => item).join(' AND ')
     : ''
 

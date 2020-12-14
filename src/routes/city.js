@@ -1,7 +1,7 @@
 const { Router } = require('express')
 const {
-	getAllProvince,
-	getAllCityInProvince
+  getAllProvince,
+  getAllCityInProvince
 } = require('../controllers/address')
 
 const router = Router()

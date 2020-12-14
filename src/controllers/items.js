@@ -1,54 +1,25 @@
-const express = require('express')
-const app = express()
-const bodyParser = require('body-parser')
 const responseStandard = require('../helpers/response')
-const arrayValSanitizer = require('../helpers/arrayValueSanitizer')
 const joi = require('joi')
 const arrayImagetoDB = require('../helpers/imagetoDB')
-const updateImgtoDB = require('../helpers/updateImgtoDB')
-const imgRemover = require('../helpers/imgRemover')
 
-app.use(bodyParser.urlencoded({ extended: false }))
-app.use(bodyParser.json())
-app.use(express.static('public'))
-
-const {
-  viewItemsModel,
-  viewCountItemsModel,
-  getDetailItem,
-  createItemModel,
-  deleteItemModel,
-  getItemPlain,
-  viewAllItemsModel,
-  viewAllItemsModelCount,
-  getFromItemDetails,
-  updateItemModelNew
-} = require('../models/items')
-const {
-  itemFormController
-} = require('../helpers/joiControllerForm')
+const itemModel = require('../models/items')
+const categoryModel = require('../models/categories')
+const itemDetailModel = require('../models/itemDetails')
+const ratingModel = require('../models/ratings')
+const colorModel = require('../models/colors')
+const itemImages = require('../models/itemImages')
 
 const pagination = require('../helpers/pagination')
-const features = require('../helpers/features')
-const table = 'items'
 
 module.exports = {
   viewItems: async (req, res) => {
-    const defSearch = 'items.name'
-    const defSort = 'items.created_at'
-    const { searchKey, searchValue, sortKey, sortValue, and } = features(req.query, defSearch, defSort)
-    const { page, limit, limiter } = pagination.pagePrep(req.query)
+    const path = 'items'
+    const { limit, page } = req.query
     try {
-      const result = await viewAllItemsModel(searchKey, searchValue, sortKey, sortValue, limiter, and)
-      const [{ count }] = await viewAllItemsModelCount(searchKey, searchValue, and) || 0
-      console.log(count)
-      if (result.length) {
-        const pageInfo = pagination.paging(count, page, limit, table, req)
-        return responseStandard(res, 'List of Items', { ...{ data: result }, ...{ pageInfo } })
-      } else {
-        const pageInfo = pagination.paging(count, page, limit, table, req)
-        return responseStandard(res, 'There is no item in the list', pageInfo, 400, false)
-      }
+      const { results, count } = await itemModel.getAllItem({}, req.query)
+      const pageInfo = pagination.paging(count, page, limit, path, req)
+      const msg = count ? 'List of items' : 'There is no item in the list'
+      return responseStandard(res, msg, { results, pageInfo })
     } catch (err) {
       console.log(err)
       return responseStandard(res, err.message, {}, 500, false)
@@ -56,185 +27,175 @@ module.exports = {
   },
   getDetailItem: async (req, res) => {
     const { id } = req.params
-    const defSearch = 'color_name'
-    const defSort = 'created_at'
-    let { searchKey, searchValue, sortKey, sortValue, and } = features(req.query, defSearch, defSort)
-    const { page, limit, limiter } = pagination.pagePrep(req.query)
-    and = `and item_id = ${id}`
     try {
-      const [{ name, description, seller_id, subcategory_id, created_at }] = await getItemPlain(id)
-      const result = await viewItemsModel(searchKey, searchValue, sortKey, sortValue, limiter, and, 'item_details')
-      const dataItem = { name, description, seller_id, subcategory_id, created_at }
-      console.log(dataItem)
-      const [{ count }] = await viewCountItemsModel(searchKey, searchValue, and, 'item_details') || 0
-      console.log(count)
-      if (result.length) {
-        const pageInfo = pagination.paging(count, page, limit, table, req)
-        return responseStandard(res, 'Detail Items', { ...dataItem, ...{ data: result }, ...{ pageInfo } })
-      } else {
-        const pageInfo = pagination.paging(count, page, limit, table, req)
-        return responseStandard(res, 'There is no item in the list', pageInfo, 400, false)
-      }
+      let items = await itemModel.getItem(id)
+      items = [items]
+      let category = await categoryModel.getCategorybyID(items.category_id)
+      category = [category]
+      let ratings = await ratingModel.getRatings(id)
+      ratings = [ratings]
+      const itemDetails = await itemDetailModel.getItemDetailsByItemId(id)
+      return responseStandard(res, 'Detail Item', { results: { ...items, category, ratings, itemDetails } })
     } catch (err) {
       console.log(err)
       return responseStandard(res, err.message, {}, 500, false)
     }
   },
-  createItem: (requires) => {
-    return async (req, res) => {
-      const { role_id, id: user_id } = req.user
-      console.log('we are on create Item')
-      try {
-        if ((role_id === 1) || (role_id === 3)) {
-          let form = itemFormController(req.body, requires)
-          const { itemDetails } = form
-          const keys = [form.detailKey]
-          form = form.form
-          Object.assign(form[0], { seller_id: user_id })
-          const img = arrayImagetoDB(req.files)
-          console.log('INI IMG!')
-          console.log(img)
-          keys.push(img.keys)
-          form.push(img.imagePrep)
-          const result = await createItemModel(res, keys, ...form)
-          if (result.length) {
-            const resultData = { data: { ...{ item_id: result[0].insertId }, ...form[0], itemDetails, ...img.imgData } }
-            return responseStandard(res, 'item has been created', resultData, 201)
-          } else {
-            req.files && imgRemover(res, req.files)
-            return responseStandard(res, 'internal server error', {}, 500, false)
-          }
-        } else {
-          req.files && imgRemover(res, req.files)
-          return responseStandard(res, 'Forbidden access!', {}, 500, false)
-        }
-      } catch (err) {
-        console.log(err)
-        req.files && imgRemover(res, req.files)
-        return responseStandard(res, err.message, {}, 500, false)
-      }
+  createItem: async (req, res) => {
+    const { id: seller_id } = req.user
+    const { imgData } = arrayImagetoDB(req.files)
+    const {
+      name, description, categoryName, condition_id, weight, price, stock, detailArr
+    } = req.body
+    const dataItem = {
+      name, description, categoryName, condition_id, weight, price, stock
     }
-  },
-  createItemDetail: async (req, res) => {
-    const { role_id, adminId } = req.user
-    console.log(role_id)
-    console.log(adminId)
-    if (((role_id === 1 || role_id === 2) && adminId) || (role_id === 3)) {
-      const schema = joi.object({
-        item_id: joi.number().integer().required(),
-        color_name: joi.string().required(),
-        stock: joi.number().required(),
-        hex: joi.string().required(),
-        price: joi.number().integer().required()
+    const schema = joi.object({
+      name: joi.string().required(),
+      description: joi.string(),
+      categoryName: joi.string().required(),
+      condition_id: joi.number().required(),
+      weight: joi.number().required(),
+      price: joi.number().required(),
+      stock: joi.number().required()
+    })
+    const { value: data, error } = schema.validate(dataItem)
+    if (error) {
+      console.log(error)
+      return responseStandard(res, error.message, {}, 400, false)
+    }
+    Object.assign(data, { seller_id })
+    try {
+      const { results, created } = await categoryModel.searchOrCreateCategory({
+        name: data.categoryName
       })
-      const { value: data, error } = schema.validate(req.body)
-      const colName = Object.keys(data)
-      const colValue = arrayValSanitizer(Object.values(data))
-      console.log(data)
-      if (error) {
-        console.log(error)
-        return responseStandard(res, error.message, {}, 400, false)
-      } else {
-        try {
-          const result = await createItemModel(colName, colValue, 'item_details')
-          Object.assign(data, { id: result.insertId })
-          return responseStandard(res, 'detail item has been created', { data }, 201)
-        } catch (err) {
-          console.log(err)
-          return responseStandard(res, err.message, {}, 500, false)
-        }
+      const msgCreated = created ? ' and success created new category' : ''
+      delete data.categoryName
+      Object.assign(data, { category_id: results[0].id })
+      const createItem = await itemModel.createItem(data)
+      if (!createItem.insertId) {
+        return responseStandard(res, 'internal server error', {}, 500, false)
       }
-    } else {
-      return responseStandard(res, 'Forbidden access!', {}, 500, false)
+      Object.assign(data, { id: createItem.insertId })
+      const item_id = createItem.insertId
+      Object.assign(imgData, { item_id })
+      await itemImages.insertImage(imgData)
+      const detailResults = []
+      if (detailArr.length) {
+        const detailValueArr = []
+        const detailKeyArr = [0]
+        // insert item detail
+        for (const detail of detailArr) {
+          // validating item detail from form
+          const schema = joi.object({
+            colorName: joi.string().required(),
+            hex: joi.string().pattern(new RegExp(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/i)).required(),
+            available: joi.boolean().required()
+          })
+          const { value: data, error } = schema.validate(detail)
+          if (error) {
+            console.log(error)
+            return responseStandard(res, error.message, {}, 400, false)
+          }
+
+          // search or create new color in color table
+          const { results } = await colorModel.searchOrCreateColor({
+            name: data.colorName,
+            hex: data.hex
+          })
+
+          // get id from color table
+          const color_id = results[0].insertId
+
+          // create object for detail data
+          const schemaDetail = joi.object({
+            item_id: joi.number().required(),
+            color_id: joi.number().required(),
+            available: joi.boolean().required()
+          })
+          const { value: dataDetail, err } = schemaDetail.validate({
+            item_id: createItem.insertId,
+            color_id,
+            available: data.available
+          })
+          if (err) {
+            console.log(err)
+            return responseStandard(res, err.message, {}, 400, false)
+          }
+          detailResults.push(dataDetail)
+          detailKeyArr[0] = Object.keys(dataDetail)
+          detailValueArr.push(Object.values(dataDetail))
+        }
+        const createItemDetail = await itemDetailModel.createItemDetailsArray(detailKeyArr, detailValueArr)
+        console.log('this is createItemDetail')
+        console.log(createItemDetail)
+      }
+      return responseStandard(res, 'success created new item' + msgCreated, {
+        results: {
+          ...data,
+          imgData,
+          detailResults
+        }
+      })
+    } catch (err) {
+      console.log(err)
+      return responseStandard(res, err.message, {}, 500, false)
     }
   },
-  updateItem: requires => {
-    return async (req, res) => {
-      const { id: user_id, role_id, adminId } = req.user
-      try {
-        const { id } = req.params
-        const itemData = await getDetailItem(id, table)
-        const detailRows = await getFromItemDetails(id)
-        const { seller_id } = itemData[0]
-        console.log(detailRows)
-        if (((role_id === 1 || role_id === 2) && adminId) || ((role_id === 3) && (seller_id === user_id))) {
-          console.log('this is req.files')
-          console.log(req.files)
-          console.log(detailRows)
-          const data = itemFormController(req.body, requires, detailRows, Number(id))
-          const { form, keys } = data
-          const { imageKeysUpdate, imageValsUpdate, imageKeysNew, imageValsNew, imageResult } = await updateImgtoDB(id, req.files)
-          console.log(imageKeysUpdate)
-          form.push(imageValsUpdate, imageValsNew)
-          keys.push(imageKeysUpdate, imageKeysNew)
-          const result = await updateItemModelNew(res, keys, ...form, id, requires)
-          console.log(result)
-          if (result.length) {
-            return responseStandard(res, 'item has been updated', {
-              updatedItem: {
-                ...data.form[0],
-                itemDetailsUpdate: data.itemDetailsUpdate,
-                itemDetailsNew: data.itemDetailsNew,
-                imageResult
-              }
-            }, 201)
-          } else {
-            responseStandard(res, 'internal server error', {}, 500, false)
-          }
-        } else {
-          req.files && imgRemover(res, req.files)
-          return responseStandard(res, 'Forbidden access!', {}, 500, false)
-        }
-      } catch (err) {
-        console.log(err)
-        req.files && imgRemover(res, req.files)
-        return responseStandard(res, err.message, {}, 500, false)
+  updateItem: async (req, res) => {
+    const { id: seller_id } = req.user
+    const { id } = req.params
+    const {
+      name, description, categoryName, condition_id, weight, price, stock
+    } = req.body
+    const dataItem = {
+      name, description, categoryName, condition_id, weight, price, stock
+    }
+    const schema = joi.object({
+      name: joi.string(),
+      description: joi.string(),
+      categoryName: joi.string(),
+      condition_id: joi.number(),
+      weight: joi.number(),
+      price: joi.number(),
+      stock: joi.number()
+    })
+    const { value: data, error } = schema.validate(dataItem)
+    if (error) {
+      console.log(error)
+      return responseStandard(res, error.message, {}, 400, false)
+    }
+    try {
+      let msgCreated = ''
+      if (dataItem.categoryName) {
+        const { results, created } = await categoryModel.searchOrCreateCategory({
+          name: data.categoryName
+        })
+        msgCreated = created ? ' and success created new category' : ''
+        Object.assign(data, { category_id: results[0].id })
       }
+      delete data.categoryName
+      const { results, count } = await itemModel.getItemByCondition({ id, seller_id })
+      if (!count) {
+        return responseStandard(res, 'item not found!', {}, 400, false)
+      }
+      await itemModel.updateItem(data, results[0])
+      return responseStandard(res, 'success update item on id: ' + id + msgCreated, { data })
+    } catch (err) {
+      console.log(err)
+      return responseStandard(res, err.message, {}, 500, false)
     }
   },
   deleteItem: async (req, res) => {
-    const { id: user_id, role_id, adminId } = req.user
+    const { id: seller_id } = req.user
+    const { id } = req.params
     try {
-      const { id } = req.params
-      const itemData = await getDetailItem(id, table)
-      const { seller_id } = itemData[0]
-      if ((((role_id === 1) || (role_id === 2)) && adminId) ||
-        ((role_id === 3) && (seller_id === user_id))) {
-        const searchKey = `item_id = ${id} AND name`
-        const delImages = await viewItemsModel(searchKey, '', 'created_at', 'DESC', '', '', 'item_images')
-        const result = await deleteItemModel(id)
-        if (result.affectedRows) {
-          console.log(delImages)
-          imgRemover(res, delImages, 0)
-          return responseStandard(res, 'item on id: ' + id + ' has been deleted', {})
-        } else {
-          return responseStandard(res, 'The id you choose is invalid', {}, 400, false)
-        }
-      } else {
-        return responseStandard(res, 'Forbidden access!', {}, 500, false)
+      const { results, count } = await itemModel.getItemByCondition({ id, seller_id })
+      if (!count) {
+        return responseStandard(res, 'item not found!', {}, 400, false)
       }
-    } catch (err) {
-      console.log(err)
-      return responseStandard(res, err.message, {}, 500, false)
-    }
-  },
-  deleteItemDetail: async (req, res) => {
-    const { id: user_id, role_id, adminId } = req.user
-    try {
-      const { id } = req.params
-      const { item_id } = await getFromItemDetails(id)
-      const { seller_id } = await getDetailItem(item_id, table)
-      if (((role_id === 1 || role_id === 2) && adminId) ||
-        ((role_id === 3) && (seller_id === user_id))) {
-        const result = await deleteItemModel(id, 'item_details')
-        if (result.affectedRows) {
-          return responseStandard(res, 'Detail item has been deleted', {})
-        } else {
-          return responseStandard(res, 'The id you choose is invalid', {}, 400, false)
-        }
-      } else {
-        return responseStandard(res, 'Forbidden access!', {}, 500, false)
-      }
+      await itemModel.deleteItem(results[0])
+      return responseStandard(res, 'success delete id: ' + id, {})
     } catch (err) {
       console.log(err)
       return responseStandard(res, err.message, {}, 500, false)

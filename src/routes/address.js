@@ -1,24 +1,23 @@
 const { Router } = require('express')
-const {
-	getAllAddress,
-	getDetailAddress,
-	createAddres,
-	updateAddressModel,
-	deleteAddress,
-	getAllProvince,
-	getAllCityInProvince
-} = require('../controllers/address')
-
+const address = require('../controllers/address')
 
 const router = Router()
 
-router.get('/', getAllAddress)
-router.post('/', createAddres)
-router.put('/:id', updateAddressModel('put'))
-router.patch('/:id', updateAddressModel('patch'))
-router.delete('/:id', deleteAddress)
-router.get('/:id', getDetailAddress)
-router.get('/province/', getAllProvince)
-router.get('/province/city/:id', getAllCityInProvince)
+const roleChecker = require('../middlewares/roleChecker')
+
+// get all address by admin
+router.get('/admin/all', roleChecker.admin, address.getAllAddress)
+
+//
+router.post('/', address.createAddress)
+router.put('/:id', roleChecker.paramsNumber, address.updateAddressModel('put'))
+router.patch('/:id', roleChecker.paramsNumber, address.updateAddressModel('patch'))
+router.delete('/:id', roleChecker.paramsNumber, address.deleteAddress)
+router.get('/detail/:id', roleChecker.paramsNumber, address.getDetailAddress)
+router.get('/all', address.getAddress)
+
+// get province
+router.get('/province/', address.getAllProvince)
+router.get('/province/city/:id', roleChecker.paramsNumber, address.getAllCityInProvince)
 
 module.exports = router

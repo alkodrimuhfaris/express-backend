@@ -1,90 +1,84 @@
 const getFromDB = require('../helpers/promiseForSQL')
+const pagination = require('../helpers/pagination')
+
+const queryGenerator = require('../helpers/queryGenerator')
 
 const table = 'user_address'
 let query = ''
 
 module.exports = {
-  getAddressByID: async (where, tables = table) => {
+  createAddress: async (data = {}, tables = table) => {
+    query = `INSERT INTO ${tables} SET ?`
+    return await getFromDB(query, data)
+  },
+  updateAddress: async (data = {}, whereData = {}, tables = table) => {
+    const { dataArr, prepStatement } = queryGenerator({ data: whereData })
+
+    // query for where data
+    const additionalQuery = [dataArr].filter(item => item).map(item => `(${item})`)
+
+    // query for where (if it exist)
+    const where = additionalQuery ? ' WHERE ' : ''
+
+    query = `UPDATE ${tables} SET ?
+            ${where}
+            ${additionalQuery}`
+    return await getFromDB(query, [data, ...prepStatement])
+  },
+  deleteAddress: async (whereData = {}, tables = table) => {
+    const { dataArr, prepStatement } = queryGenerator({ data: whereData })
+
+    // query for where
+    const additionalQuery = [dataArr].filter(item => item).map(item => `(${item})`)
+
+    // query for where (if it exist)
+    const where = additionalQuery ? ' WHERE ' : ''
+
+    query = `DELETE FROM ${tables}
+            ${where}
+            ${additionalQuery}`
+    return await getFromDB(query, prepStatement)
+  },
+  getAddress: async (whereData = {}, reqQuery, tables = table) => {
+    const sortQuery = reqQuery.sort ? reqQuery.sort : {}
+    reqQuery = {
+      ...reqQuery,
+      sort: {
+        primary_address: 'DESC',
+        created_at: 'DESC',
+        ...sortQuery
+      }
+    }
+
+    const { searchArr, date, orderArr, dataArr, prepStatement } = queryGenerator({ ...reqQuery, data: whereData })
+
+    // query for search and limit
+    const additionalQuery = [searchArr, date, dataArr].filter(item => item).map(item => `(${item})`).join(' AND ')
+
+    // query for where (if it exist)
+    const where = additionalQuery ? ' WHERE ' : ''
+
+    const { limiter } = pagination.pagePrep(reqQuery)
+
     query = `SELECT *
             FROM ${tables}
-            WHERE ?`
-    return await getFromDB(query, where)
-  },
-  getAddressPlain: async (id, userId, tables = table) => {
-    query = `SELECT *
-            FROM ${tables} 
-            WHERE id = ${id}
-            AND user_id=${userId}`
-    console.log(query)
-    return await getFromDB(query)
-  },
-  viewAddresssModel: async (data, and = [], limiter = '', tables = table) => {
-    let queryAnd = ''
-    and.forEach(item => {
-      queryAnd += ' AND ? '
-      return item
-    })
-    !data.length && (data = [data])
-    and.length && (data = [...data, ...and])
-    query = `SELECT *
-            FROM ${tables}
-            WHERE ? 
-            ${queryAnd}
-            ORDER BY primary_address DESC, created_at DESC
+            ${where}
+            ${additionalQuery}
+            ORDER BY
+              ${orderArr}
             ${limiter}`
-    console.log(query)
-    return await getFromDB(query, data)
-  },
-  viewCountAddresssModel: async (userId, tables = table) => {
-    query = `SELECT
-            COUNT(*) AS count
-            FROM ${tables} 
-            WHERE user_id = ${userId}`
-    console.log(query)
-    return await getFromDB(query)
-  },
-  createAddressModel: async (data, tables = table) => {
-    query = `INSERT INTO ${tables}
-            SET ?`
-    return await getFromDB(query, [data])
-  },
-  updateAddressModel: async (data, and = [], tables = table) => {
-    let queryAnd = ''
-    and.forEach(item => {
-      queryAnd += 'AND ? '
-      return item
-    })
-    !data.length && (data = [data])
-    and.length && (data = [...data, ...and])
-    query = `UPDATE ${tables}
-            SET ?
-            WHERE ?
-            ${queryAnd}`
-    return await getFromDB(query, data)
-  },
-  deleteAddressModel: async (data, and = [], tables = table) => {
-    let queryAnd = ''
-    and.forEach(item => {
-      queryAnd += 'AND ? '
-      return item
-    })
-    !data.length && (data = [data])
-    and.length && (data = [...data, ...and])
-    query = `DELETE
+    const results = await getFromDB(query, prepStatement)
+
+    query = `SELECT count(*) as count
             FROM ${tables}
-            WHERE ?
-            ${queryAnd}`
-    return await getFromDB(query, data)
+            ${where}
+            ${additionalQuery}`
+    const [{ count }] = await getFromDB(query, prepStatement)
+
+    return { results, count }
   },
   getCityId: async (user_id = {}, primaryOrAddressId = { primary_address: 1 }, tables = table) => {
     query = `SELECT city_id
-            FROM ${tables}
-            WHERE ?
-            AND ?`
-    return await getFromDB(query, [user_id, primaryOrAddressId])
-  },
-  getAddress: async (user_id = {}, primaryOrAddressId = { primary_address: 1 }, tables = table) => {
-    query = `SELECT *
             FROM ${tables}
             WHERE ?
             AND ?`

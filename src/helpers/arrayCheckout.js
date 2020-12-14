@@ -13,6 +13,7 @@ module.exports = (sellerArr, itemsArr) => {
       delivery_fee: 0,
       courier: '',
       service_name: '',
+      quantity: 0,
       items: []
     }
     return item
@@ -27,6 +28,7 @@ module.exports = (sellerArr, itemsArr) => {
         sellerArr[index].destination = item.destination
         sellerArr[index].store_name = item.store_name
         sellerArr[index].items.push(item.item_id)
+        sellerArr[index].quantity += item.quantity
       }
     }
   }
@@ -40,7 +42,8 @@ module.exports = (sellerArr, itemsArr) => {
         name: '',
         product_image: '',
         item_price: 0,
-        item_detail: []
+        item_detail: [],
+        quantity: 0
       }
       return item
     })
@@ -63,6 +66,7 @@ module.exports = (sellerArr, itemsArr) => {
             price: price * quantity,
             quantity
           }
+          sellerArr[index].items[indexItem].quantity += quantity
           sellerArr[index].items[indexItem].name = name
           sellerArr[index].items[indexItem].product_image = product_image
           sellerArr[index].items[indexItem].item_detail.push(itemDetail)
