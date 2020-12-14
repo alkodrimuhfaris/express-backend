@@ -77,6 +77,10 @@ module.exports = {
       // get validation from helpers
       const [userCredentials, userDetail] = form
 
+      // assign role_id to forms
+      Object.assign(userCredentials, { role_id })
+      Object.assign(userDetail, { role_id })
+
       // create user
       const results = await user.createUser(userCredentials)
 
