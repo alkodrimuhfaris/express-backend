@@ -45,6 +45,7 @@ app.use('/city', cityRouter)
 app.use('/transaction', authMiddleware, transactionRouter)
 
 app.use('/', (req, res) => {
+  console.log('some one opened home')
   return response(res, 'TUKU APP backend', {})
 })
 
