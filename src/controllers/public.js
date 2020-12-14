@@ -20,11 +20,8 @@ module.exports = {
       try {
         const { results, count } = await itemModel.getAllItem({}, req.query, query)
         const pageInfo = pagination.paging(count, page, limit, tables, req)
-        if (count) {
-          return responseStandard(res, 'List of Items', { data: results, pageInfo })
-        } else {
-          return responseStandard(res, 'There is no item in the list', pageInfo)
-        }
+        const msg = count ? 'List of Items' : 'There is no item in the list'
+        return responseStandard(res, msg, { results, pageInfo })
       } catch (err) {
         console.log(err)
         return responseStandard(res, err.message, {}, 500, false)
@@ -38,7 +35,7 @@ module.exports = {
       if (results.length) {
         return responseStandard(res, 'Detail Items', { results })
       } else {
-        return responseStandard(res, 'There is no detail item in the list!')
+        return responseStandard(res, 'There is no detail item in the list!', { results })
       }
     } catch (err) {
       console.log(err)
@@ -72,16 +69,16 @@ module.exports = {
       const [{ ratingAvg, ratingCount }] = rating
       const ratingBar = [rating[0].star5bar, rating[0].star4bar, rating[0].star3bar, rating[0].star2bar, rating[0].star1bar]
       const starCount = [rating[0].stars5, rating[0].stars4, rating[0].stars3, rating[0].stars2, rating[0].stars1]
+      rating = [{
+        ratingAvg,
+        ratingBar,
+        starCount,
+        ratingCount
+      }]
       if (dataItem) {
-        rating = [{
-          ratingAvg,
-          ratingBar,
-          starCount,
-          ratingCount
-        }]
         return responseStandard(res, 'Detail Items', { dataItem: { ...dataItem, rating }, productDetails: result })
       } else {
-        return responseStandard(res, 'There is no item in the list')
+        return responseStandard(res, 'There is no item in the list', { dataItem: { ...dataItem, rating }, productDetails: result })
       }
     } catch (err) {
       console.log(err)
@@ -94,11 +91,8 @@ module.exports = {
     try {
       const { results, count } = await categoryModel.viewAllCategories({}, req.query)
       const pageInfo = pagination.paging(count, page, limit, tables, req)
-      if (count) {
-        return responseStandard(res, 'List of Categories', { results, pageInfo })
-      } else {
-        return responseStandard(res, 'There is no item in the list', pageInfo)
-      }
+      const msg = count ? 'List of Items' : 'There is no item in the list'
+      return responseStandard(res, msg, { results, pageInfo })
     } catch (error) {
       console.log(error)
       return responseStandard(res, error.message, {}, 500, false)
