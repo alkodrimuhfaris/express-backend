@@ -20,6 +20,8 @@ const checkoutRouter = require('./src/routes/checkout')
 const transactionRouter = require('./src/routes/transaction')
 const cityRouter = require('./src/routes/city')
 
+const response = require('./src/helpers/response')
+
 app.use(express.static('public'))
 
 const bodyParser = require('body-parser')
@@ -41,6 +43,10 @@ app.use('/public', publicRouter)
 app.use('/checkout', checkoutRouter)
 app.use('/city', cityRouter)
 app.use('/transaction', authMiddleware, transactionRouter)
+
+app.use('/', (req, res) => {
+  return response(res, 'TUKU APP backend', {})
+})
 
 app.listen(8989, () => {
   console.log('App listening on port 8989')
