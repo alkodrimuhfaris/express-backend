@@ -18,7 +18,7 @@ module.exports = {
         tables = 'public/popular'
       }
       try {
-        const { results, count} = await itemModel.getAllItem({}, req.query, query)
+        const { results, count } = await itemModel.getAllItem({}, req.query, query)
         const pageInfo = pagination.paging(count, page, limit, tables, req)
         if (count) {
           return responseStandard(res, 'List of Items', { data: results, pageInfo })
