@@ -7,6 +7,7 @@ app.use(cors())
 
 // import middleware
 const authMiddleware = require('./src/middlewares/auth')
+const roleChecker = require('./src/middlewares/roleChecker')
 
 // import route
 const authRouter = require('./src/routes/auth')
@@ -32,7 +33,7 @@ app.use(bodyParser.json())
 // provide static
 app.use('/Uploads', express.static('./Assets/Public/Uploads'))
 
-app.use('/items', itemsRouter)
+app.use('/items', authMiddleware, roleChecker.seller, itemsRouter)
 app.use('/categories', categoriesRouter)
 
 app.use('/address', authMiddleware, addressRouter)

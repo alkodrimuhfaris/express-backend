@@ -12,11 +12,12 @@ const itemImages = require('../models/itemImages')
 const pagination = require('../helpers/pagination')
 
 module.exports = {
-  viewItems: async (req, res) => {
+  viewItemSeller: async (req, res) => {
+    const { id: seller_id } = req.user
     const path = 'items'
     const { limit, page } = req.query
     try {
-      const { results, count } = await itemModel.getAllItem({}, req.query)
+      const { results, count } = await itemModel.getAllItem({ seller_id }, req.query)
       const pageInfo = pagination.paging(count, page, limit, path, req)
       const msg = count ? 'List of items' : 'There is no item in the list'
       return responseStandard(res, msg, { results, pageInfo })
@@ -25,7 +26,7 @@ module.exports = {
       return responseStandard(res, err.message, {}, 500, false)
     }
   },
-  getDetailItem: async (req, res) => {
+  getDetailItemSeller: async (req, res) => {
     const { id } = req.params
     try {
       let items = await itemModel.getItem(id)

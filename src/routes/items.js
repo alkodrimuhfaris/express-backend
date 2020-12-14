@@ -1,24 +1,41 @@
 const { Router } = require('express')
 const {
-  viewItems,
+  viewItemSeller,
   createItem,
   updateItem,
   deleteItem
 } = require('../controllers/items')
-const authMiddleware = require('../middlewares/auth')
+const itemDetail = require('../controllers/itemDetail')
+const itemImages = require('../controllers/itemImages')
 const multerArray = require('../middlewares/multerArray')
 const roleChecker = require('../middlewares/roleChecker')
+const multerSingle = require('../middlewares/multerSingle')
 
 const router = Router()
 
-router.get('/', viewItems)
-router.post('/', authMiddleware, multerArray('product_image'), createItem)
-router.patch('/:id', authMiddleware, roleChecker.paramsNumber, multerArray('product_image'), updateItem)
-router.delete('/:id', authMiddleware, roleChecker.paramsNumber, deleteItem)
+// item
+router.get('/', viewItemSeller)
+router.post('/', multerArray('product_image'), createItem)
+router.patch('/update/:id', roleChecker.paramsNumber, multerArray('product_image'), updateItem)
+router.delete('/delete/:id', roleChecker.paramsNumber, deleteItem)
 
-// router.get('/:id', getDetailItem)
-// router.put('/detail/:id', authMiddleware, updateItemDetail)
-// router.patch('/:id', authMiddleware, multerFields('product_image'), updatePartialItem)
-// router.patch('/detail/:id', authMiddleware, updatePartialItemDetail)
+// item detail
+router.get('/detail/:id', roleChecker.paramsNumber, itemDetail.getItemDetailByItemId)
+router.post('/detail', multerArray('product_image'), createItem)
+router.patch('/detail/update/:id', roleChecker.paramsNumber, multerArray('product_image'), updateItem)
+router.delete('/detail/delete/:id', roleChecker.paramsNumber, deleteItem)
+
+// image
+router.get('/image', roleChecker.paramsNumber, itemImages.getImage)
+
+// image single
+router.post('/image/single', multerSingle('product_image'), itemImages.insertImageArr)
+router.patch('/image/update/single/:item_id/:id', roleChecker.paramsItemId, multerSingle('product_image'), itemImages.updateImage)
+router.delete('/image/delete/single/:item_id/:id', roleChecker.paramsItemId, itemImages.deleteImage)
+
+// image array
+router.post('/image/array', multerArray('product_image'), itemImages.insertImageArr)
+router.patch('/image/update/array/:id', roleChecker.paramsNumber, multerArray('product_image'), itemImages.updateImageArr)
+router.delete('/image/delete/array/:id', roleChecker.paramsNumber, itemImages.deleteImageArr)
 
 module.exports = router
