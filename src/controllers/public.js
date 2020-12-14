@@ -23,7 +23,7 @@ module.exports = {
         if (count) {
           return responseStandard(res, 'List of Items', { data: results, pageInfo })
         } else {
-          return responseStandard(res, 'There is no item in the list', pageInfo, 400, false)
+          return responseStandard(res, 'There is no item in the list', pageInfo)
         }
       } catch (err) {
         console.log(err)
@@ -38,7 +38,7 @@ module.exports = {
       if (results.length) {
         return responseStandard(res, 'Detail Items', { results })
       } else {
-        return responseStandard(res, 'There is no detail item in the list!', 400, false)
+        return responseStandard(res, 'There is no detail item in the list!')
       }
     } catch (err) {
       console.log(err)
@@ -97,7 +97,7 @@ module.exports = {
       if (count) {
         return responseStandard(res, 'List of Categories', { results, pageInfo })
       } else {
-        return responseStandard(res, 'There is no item in the list', pageInfo, 400, false)
+        return responseStandard(res, 'There is no item in the list', pageInfo)
       }
     } catch (error) {
       console.log(error)
