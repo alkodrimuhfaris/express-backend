@@ -100,8 +100,12 @@ module.exports = {
         return responseStandard(res, 'Internal server error', {}, 500, false)
       }
     } catch (err) {
+      let msg = 'Sign up eror!'
       console.log(err)
-      return responseStandard(res, err.message, { error: err }, 500, false)
+      if (err.errno) {
+        msg = err.errno === 1062 ? 'Email already taken' : 'Sign up eror!'
+      }
+      return responseStandard(res, msg, { error: err }, 500, false)
     }
   }
 }
