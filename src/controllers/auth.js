@@ -101,7 +101,7 @@ module.exports = {
       }
     } catch (err) {
       console.log(err)
-      return responseStandard(res, err.message, {}, 500, false)
+      return responseStandard(res, err.message, { error: err }, 500, false)
     }
   }
 }
