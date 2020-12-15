@@ -15,6 +15,8 @@ module.exports = (arr) => {
     console.log('INI DATA DARI IMAGE TO DB')
     console.log(data)
     return { imagePrep: data, imgData: img, keys: colImgKey }
+  } else if (!arr) {
+    return { imgData: img }
   } else {
     Object.assign(img, { [arr.fieldname]: 'Uploads/' + arr.filename })
     const data = [[arr.fieldname, 'Uploads/' + arr.filename]]

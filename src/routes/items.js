@@ -21,9 +21,9 @@ router.delete('/delete/:id', roleChecker.paramsNumber, deleteItem)
 
 // item detail
 router.get('/detail/:id', roleChecker.paramsNumber, itemDetail.getItemDetailByItemId)
-router.post('/detail', multerArray('product_image'), createItem)
-router.patch('/detail/update/:id', roleChecker.paramsNumber, multerArray('product_image'), updateItem)
-router.delete('/detail/delete/:id', roleChecker.paramsNumber, deleteItem)
+router.post('/detail', itemDetail.createItemDetail)
+router.patch('/detail/update/:item_id/:id', roleChecker.paramsItemId, itemDetail.updateItemDetail)
+router.delete('/detail/delete/:item_id/:id', roleChecker.paramsItemId, itemDetail.deleteItemDetail)
 
 // image
 router.get('/image', roleChecker.paramsNumber, itemImages.getImage)
