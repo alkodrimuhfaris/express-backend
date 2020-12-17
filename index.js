@@ -20,6 +20,7 @@ const publicRouter = require('./src/routes/public')
 const checkoutRouter = require('./src/routes/checkout')
 const transactionRouter = require('./src/routes/transaction')
 const cityRouter = require('./src/routes/city')
+const colorRouter = require('./src/routes/colors')
 
 const response = require('./src/helpers/response')
 
@@ -44,6 +45,7 @@ app.use('/public', publicRouter)
 app.use('/checkout', checkoutRouter)
 app.use('/city', cityRouter)
 app.use('/transaction', authMiddleware, transactionRouter)
+app.use('/colors', colorRouter)
 
 app.use('/', (req, res) => {
   console.log('some one opened home')
