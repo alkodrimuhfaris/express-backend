@@ -22,21 +22,21 @@ module.exports = {
     next()
   },
   admin: (req, res, next) => {
-    if (req.user.roleId === 1 || req.user.roleId === 2) {
+    if (req.user.role_id === 1 || req.user.role_id === 2) {
       next()
     } else {
       return responseStandart(res, 'Forbidden access', {}, 403, false)
     }
   },
   seller: (req, res, next) => {
-    if (req.user.roleId === 3 || req.user.roleId === 1 || req.user.roleId === 2) {
+    if (req.user.role_id === 3 || req.user.role_id === 1 || req.user.role_id === 2) {
       next()
     } else {
       return responseStandart(res, 'Forbidden access', {}, 403, false)
     }
   },
   customer: (req, res, next) => {
-    if (req.user.roleId === 4 || req.user.roleId === 1 || req.user.roleId === 2) {
+    if (req.user.role_id === 4 || req.user.role_id === 1 || req.user.role_id === 2) {
       next()
     } else {
       return responseStandart(res, 'Forbidden access', {}, 403, false)

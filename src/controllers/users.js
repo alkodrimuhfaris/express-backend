@@ -56,8 +56,9 @@ module.exports = {
     const { id: user_id } = req.user
     try {
       const { results } = await users.getUserWithDetail({ id: user_id })
-      delete results.password
-      return response(res, 'success get account', { results })
+      const [result] = results
+      delete result.password
+      return response(res, 'success get account', { results: result })
     } catch (err) {
       console.log(err)
       return response(res, err.message, {}, 500, false)
@@ -67,7 +68,8 @@ module.exports = {
     const { id: user_id } = req.params
     try {
       const { results } = await users.getUserWithDetail({ id: user_id })
-      delete results.password
+      const [result] = results
+      delete result.password
       return response(res, 'success get profile from id: ' + user_id, { results })
     } catch (err) {
       console.log(err)

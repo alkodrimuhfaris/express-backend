@@ -71,7 +71,7 @@ module.exports = {
             ON ${tables}.id = user_details.user_id
             ${where}
             ${additionalQuery}
-            ORDER
+            ORDER BY
               ${orderArr}
             ${limiter}`
 
@@ -86,7 +86,7 @@ module.exports = {
             ON ${tables}.id = user_details.user_id
             ${where}
             ${additionalQuery}
-            ORDER
+            ORDER BY
               ${orderArr}
             ${limiter}`
 
