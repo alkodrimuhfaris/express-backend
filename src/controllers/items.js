@@ -201,5 +201,18 @@ module.exports = {
       console.log(err)
       return responseStandard(res, err.message, {}, 500, false)
     }
+  },
+  getCondition: async (req, res) => {
+    const { page, limit } = req.query
+    const path = 'items/condition'
+    try {
+      const { results, count } = await itemModel.getConditionItem({}, req.query)
+      const pageInfo = pagination.paging(count, page, limit, path, req)
+      const message = count ? 'List of all condition' : 'condition is empty'
+      return responseStandard(res, message, { results, pageInfo })
+    } catch (err) {
+      console.log(err)
+      return responseStandard(res, err.message, {}, 500, false)
+    }
   }
 }

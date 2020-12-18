@@ -176,5 +176,33 @@ module.exports = {
             ON item_details.item_id = items.item_id
             WHERE id = ?`
     return await getFromDB(query, itemDetailsId)
+  },
+  getConditionItem: async (whereData = {}, reqQuery, tables = 'item_condition') => {
+    const { searchArr, date, price, orderArr, dataArr, prepStatement } = queryGenerator({ ...reqQuery, data: whereData })
+
+    // query for search and limit
+    const additionalQuery = [searchArr, date, price, dataArr].filter(item => item).map(item => `(${item})`).join(' AND ')
+
+    // query for where (if it exist)
+    const where = additionalQuery ? ' WHERE ' : ''
+
+    const { limiter } = pagination.pagePrep(reqQuery)
+
+    query = `SELECT *
+            FROM ${tables}
+            ${where}
+            ${additionalQuery}
+            ORDER BY 
+              ${orderArr}
+            ${limiter}`
+    const results = await getFromDB(query, prepStatement)
+
+    query = `SELECT count(*) as count
+            FROM ${tables}
+            ${where}
+            ${additionalQuery}`
+    const count = await getFromDB(query, prepStatement)
+
+    return { results, count }
   }
 }
