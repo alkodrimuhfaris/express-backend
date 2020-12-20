@@ -1,6 +1,7 @@
 const responseStandard = require('../helpers/response')
 const joi = require('joi')
 const arrayImagetoDB = require('../helpers/imagetoDB')
+const qs = require('qs')
 
 const itemModel = require('../models/items')
 const categoryModel = require('../models/categories')
@@ -44,7 +45,7 @@ module.exports = {
   },
   createItem: async (req, res) => {
     const { id: seller_id } = req.user
-    const { imgData } = arrayImagetoDB(req.files)
+    console.log(req.file)
     const {
       name, description, categoryName, condition_id, weight, price, stock, detailArr
     } = req.body
@@ -67,6 +68,10 @@ module.exports = {
     }
     Object.assign(data, { seller_id })
     try {
+      const { imgData } = req.files ? arrayImagetoDB(req.files) : undefined
+      if (!imgData) {
+        return responseStandard(res, 'Image cannot be empty', {}, 500, false)
+      }
       const { results, created } = await categoryModel.searchOrCreateCategory({
         name: data.categoryName
       })
@@ -86,8 +91,13 @@ module.exports = {
         const detailValueArr = []
         const detailKeyArr = [0]
         // insert item detail
-        for (const detail of detailArr) {
+        console.log(detailArr)
+        const { detailArr: detailArrParse } = qs.parse(detailArr)
+        console.log(detailArrParse)
+        for (const detail of detailArrParse) {
           // validating item detail from form
+          console.log('look at this!!')
+          console.log(detail)
           const schema = joi.object({
             colorName: joi.string().required(),
             hex: joi.string().pattern(new RegExp(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/i)).required(),
@@ -95,9 +105,12 @@ module.exports = {
           })
           const { value: data, error } = schema.validate(detail)
           if (error) {
+            console.log('line 99')
             console.log(error)
             return responseStandard(res, error.message, {}, 400, false)
           }
+
+          const available = data.available ? 1 : 0
 
           // search or create new color in color table
           const { results } = await colorModel.searchOrCreateColor({
@@ -108,21 +121,25 @@ module.exports = {
           // get id from color table
           const color_id = results[0].id
 
+          const itemDetailObj = {
+            item_id: item_id,
+            color_id,
+            available
+          }
+
           // create object for detail data
           const schemaDetail = joi.object({
             item_id: joi.number().required(),
             color_id: joi.number().required(),
-            available: joi.boolean().required()
+            available: joi.number().required()
           })
-          const { value: dataDetail, err } = schemaDetail.validate({
-            item_id: createItem.insertId,
-            color_id,
-            available: data.available
-          })
+          const { value: dataDetail, err } = schemaDetail.validate(itemDetailObj)
           if (err) {
+            console.log('line 127')
             console.log(err)
             return responseStandard(res, err.message, {}, 400, false)
           }
+          console.log(dataDetail.available)
           detailResults.push(dataDetail)
           detailKeyArr[0] = Object.keys(dataDetail)
           detailValueArr.push(Object.values(dataDetail))
@@ -145,9 +162,10 @@ module.exports = {
   },
   updateItem: async (req, res) => {
     const { id: seller_id } = req.user
-    const { id } = req.params
+    const { id: item_id } = req.params
+    console.log(req.file)
     const {
-      name, description, categoryName, condition_id, weight, price, stock
+      name, description, categoryName, condition_id, weight, price, stock, detailArr
     } = req.body
     const dataItem = {
       name, description, categoryName, condition_id, weight, price, stock
@@ -167,21 +185,92 @@ module.exports = {
       return responseStandard(res, error.message, {}, 400, false)
     }
     try {
-      let msgCreated = ''
-      if (dataItem.categoryName) {
-        const { results, created } = await categoryModel.searchOrCreateCategory({
-          name: data.categoryName
-        })
-        msgCreated = created ? ' and success created new category' : ''
-        Object.assign(data, { category_id: results[0].id })
-      }
+      const { imgData } = req.files ? arrayImagetoDB(req.files) : undefined
+      const { results, created } = await categoryModel.searchOrCreateCategory({
+        name: data.categoryName
+      })
+      const msgCreated = created ? ' and success created new category' : ''
       delete data.categoryName
-      const { results, count } = await itemModel.getItemByCondition({ id, seller_id })
-      if (!count) {
-        return responseStandard(res, 'item not found!', {}, 400, false)
+      Object.assign(data, { category_id: results[0].id })
+      const updateItem = await itemModel.updateItem(data, { id: item_id, seller_id })
+      if (!updateItem.affectedRows) {
+        return responseStandard(res, 'internal server error', {}, 500, false)
       }
-      await itemModel.updateItem(data, results[0])
-      return responseStandard(res, 'success update item on id: ' + id + msgCreated, { data })
+      Object.assign(data, { id: item_id })
+      if (imgData) {
+        Object.assign(imgData, { item_id })
+        await itemImages.updateImage(imgData, { item_id })
+      }
+      const detailResults = []
+      if (detailArr.length) {
+        const detailValueArr = []
+        const detailKeyArr = [0]
+        // insert item detail
+        console.log(detailArr)
+        const { detailArr: detailArrParse } = qs.parse(detailArr)
+        console.log(detailArrParse)
+        for (const detail of detailArrParse) {
+          // validating item detail from form
+          const schema = joi.object({
+            id: joi.number().integer().required(),
+            colorName: joi.string().required(),
+            hex: joi.string().pattern(new RegExp(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/i)).required(),
+            available: joi.boolean().required()
+          })
+          const { value: data, error } = schema.validate(detail)
+          if (error) {
+            console.log('line 222')
+            console.log(error)
+            return responseStandard(res, error.message, {}, 400, false)
+          }
+
+          const available = data.available ? 1 : 0
+
+          // search or create new color in color table
+          const { results } = await colorModel.searchOrCreateColor({
+            name: data.colorName,
+            hex: data.hex
+          })
+
+          // get id from color table
+          const color_id = results[0].id
+
+          const itemDetailObj = {
+            id: data.id,
+            item_id: item_id,
+            color_id,
+            available
+          }
+
+          // create object for detail data
+          const schemaDetail = joi.object({
+            id: joi.number().integer().required(),
+            item_id: joi.number().required(),
+            color_id: joi.number().required(),
+            available: joi.number().required()
+          })
+          const { value: dataDetail, err } = schemaDetail.validate(itemDetailObj)
+          if (err) {
+            console.log('line 127')
+            console.log(err)
+            return responseStandard(res, err.message, {}, 400, false)
+          }
+          console.log(dataDetail.available)
+          detailResults.push(dataDetail)
+          detailKeyArr[0] = Object.keys(dataDetail)
+          detailValueArr.push(Object.values(dataDetail))
+        }
+        const createItemDetail = await itemDetailModel.updateAndInsert(detailKeyArr, detailValueArr)
+        console.log('this is createItemDetail')
+        console.log(createItemDetail)
+      }
+      return responseStandard(res, 'success created new item' + msgCreated, {
+        results: {
+          ...data,
+          imgData,
+          detailResults
+        }
+      })
     } catch (err) {
       console.log(err)
       return responseStandard(res, err.message, {}, 500, false)

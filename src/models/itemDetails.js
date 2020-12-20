@@ -11,8 +11,18 @@ module.exports = {
     return await getFromDB(query, data)
   },
   createItemDetailsArray: async (keyArr, valueArr, tables = table) => {
-    query = `INSERT INTO ${tables} ? VALUES ?`
-    return await getFromDB(query, [keyArr, valueArr])
+    query = `INSERT INTO ${tables} (${keyArr}) VALUES ?`
+    return await getFromDB(query, [valueArr])
+  },
+  updateAndInsert: async (keyArr, valueArr, tables = table) => {
+    const updateArr = []
+    keyArr.forEach(item => {
+      item = item === 'id' ? '' : `${item} = VALUES(${item})`
+      item && updateArr.push(item)
+    })
+    query = `INSERT INTO ${tables} (${keyArr}) VALUES ?
+            ON DUPLICATE KEY UPDATE ${updateArr}`
+    return await getFromDB(query, [valueArr])
   },
   updateItemDetails: async (data = {}, whereData = {}, tables = table) => {
     const { dataArr, prepStatement } = queryGenerator({ data: whereData })
