@@ -4,7 +4,8 @@ const {
   createItem,
   updateItem,
   deleteItem,
-  getCondition
+  getCondition,
+  getDetailItemSeller
 } = require('../controllers/items')
 const itemDetail = require('../controllers/itemDetail')
 const itemImages = require('../controllers/itemImages')
@@ -19,6 +20,9 @@ router.get('/', viewItemSeller)
 router.post('/', multerArray('product_image'), createItem)
 router.patch('/update/:id', roleChecker.paramsNumber, multerArray('product_image'), updateItem)
 router.delete('/delete/:id', roleChecker.paramsNumber, deleteItem)
+
+// item seller
+router.get('/seller/:id', roleChecker.paramsNumber, getDetailItemSeller)
 
 // get condition item
 router.get('/condition', getCondition)

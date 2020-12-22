@@ -138,7 +138,7 @@ module.exports = {
     try {
       const results = await itemDetailModel.getItemDetailsByItemId(item_id)
       if (!results.length) {
-        return responseStandard(res, 'There is no item id in the list', {})
+        return responseStandard(res, 'There is no item id in the list', { results })
       }
       return responseStandard(res, 'detail item on item with id: ' + item_id, { results })
     } catch (err) {

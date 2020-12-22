@@ -30,14 +30,15 @@ module.exports = {
   getDetailItemSeller: async (req, res) => {
     const { id } = req.params
     try {
-      let items = await itemModel.getItem(id)
-      items = [items]
-      let category = await categoryModel.getCategorybyID(items.category_id)
-      category = [category]
-      let ratings = await ratingModel.getRatings(id)
-      ratings = [ratings]
+      const items = await itemModel.getItem(id)
+      const [item] = items
+      console.log(item)
+      const categories = await categoryModel.getCategorybyID(item.category_id)
+      const [category] = categories
+      const rating = await ratingModel.getRatings(id)
+      const [ratings] = rating
       const itemDetails = await itemDetailModel.getItemDetailsByItemId(id)
-      return responseStandard(res, 'Detail Item', { results: { ...items, category, ratings, itemDetails } })
+      return responseStandard(res, 'Detail Item', { results: { item, category, ratings, itemDetails } })
     } catch (err) {
       console.log(err)
       return responseStandard(res, err.message, {}, 500, false)

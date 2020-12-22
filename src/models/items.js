@@ -121,8 +121,15 @@ module.exports = {
                 FROM user_details
               ) AS  detailSeller
               ON items.seller_id = detailSeller.user_id
-            ${where}
-            ${additionalQuery}
+              LEFT JOIN (
+                SELECT
+                    id as condition_id,
+                    item_condition
+                FROM item_condition
+              ) AS item_condition
+              ON items.condition_id = item_condition.condition_id
+              ${where}
+              ${additionalQuery}
             ORDER BY 
               ${orderArr}
             ${limiter}`
@@ -148,6 +155,13 @@ module.exports = {
                 FROM user_details
               ) AS  detailSeller
               ON items.seller_id = detailSeller.user_id
+              LEFT JOIN (
+                SELECT
+                    id as condition_id,
+                    item_condition
+                FROM item_condition
+              ) AS item_condition
+              ON items.condition_id = item_condition.condition_id
             ${where}
             ${additionalQuery}`
     const [{ count }] = await getFromDB(query, prepStatement)

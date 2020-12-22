@@ -2,6 +2,7 @@ const joi = require('joi')
 const responseStandard = require('../helpers/response')
 
 const myCart = require('../models/myCart')
+const itemModel = require('../models/items')
 
 const pagination = require('../helpers/pagination')
 
@@ -19,8 +20,12 @@ module.exports = {
       return responseStandard(res, error.message, {}, 401, false)
     }
     try {
+      const results = await itemModel.getItem(data.item_id)
+      const [{ seller_id }] = results
+      console.log(seller_id)
       const { itemdetails_id, item_id } = data
-      const { results: getRes, count } = await myCart.getAllCart({ user_id, item_id, itemdetails_id })
+      const { results: getRes, count } = await myCart.getCart({ user_id, item_id, itemdetails_id })
+      console.log(getRes)
       if (count) {
         const update = await myCart.updateCart(data, getRes[0])
         if (update.affectedRows) {
@@ -29,7 +34,7 @@ module.exports = {
           return responseStandard(res, 'Internal server error', 500, false)
         }
       }
-      Object.assign(data, { user_id: user_id })
+      Object.assign(data, { user_id: user_id, seller_id })
       const result = await myCart.addToCart(data)
       Object.assign(data, { id: result.insertId })
       return responseStandard(res, 'Item has been added to cart!', { data }, 201)
