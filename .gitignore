@@ -1,5 +1,4 @@
 node_modules
 latihan.js
-Assets
 src/helpers/getMySQLTime.js
 src/helpers/itemChecking.js
