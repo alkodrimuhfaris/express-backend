@@ -48,7 +48,7 @@ module.exports = {
     const { id: seller_id } = req.user
     console.log(req.file)
     const {
-      name, description, categoryName, condition_id, weight, price, stock, detailArr
+      name, description, categoryName, condition_id, weight, price, stock, detailArr, imageOrder
     } = req.body
     const dataItem = {
       name, description, categoryName, condition_id, weight, price, stock
@@ -68,9 +68,17 @@ module.exports = {
       return responseStandard(res, error.message, {}, 400, false)
     }
     Object.assign(data, { seller_id })
+    const newImageOrder = imageOrder ? imageOrder.filter(item => item) : null
     try {
-      const { imgData } = req.files ? arrayImagetoDB(req.files) : undefined
-      if (!imgData) {
+      console.log('this req files')
+      console.log(req.files)
+      let imgData = {}
+      if (newImageOrder) {
+        ({ imgData } = arrayImagetoDB(req.files, newImageOrder))
+      } else {
+        ({ imgData } = arrayImagetoDB(req.files))
+      }
+      if (!Object.keys(imgData).length) {
         return responseStandard(res, 'Image cannot be empty', {}, 500, false)
       }
       const { results, created } = await categoryModel.searchOrCreateCategory({
@@ -166,7 +174,7 @@ module.exports = {
     const { id: item_id } = req.params
     console.log(req.file)
     const {
-      name, description, categoryName, condition_id, weight, price, stock, detailArr
+      name, description, categoryName, condition_id, weight, price, stock, detailArr, imageOrder
     } = req.body
     const dataItem = {
       name, description, categoryName, condition_id, weight, price, stock
@@ -185,8 +193,17 @@ module.exports = {
       console.log(error)
       return responseStandard(res, error.message, {}, 400, false)
     }
+    const newImageOrder = imageOrder ? imageOrder.filter(item => item) : null
     try {
-      const { imgData } = req.files ? arrayImagetoDB(req.files) : undefined
+      console.log('this req files')
+      console.log(req.files)
+      let imgData = {}
+      if (newImageOrder) {
+        ({ imgData } = arrayImagetoDB(req.files, newImageOrder))
+      } else {
+        ({ imgData } = arrayImagetoDB(req.files))
+      }
+      console.log(imgData)
       const { results, created } = await categoryModel.searchOrCreateCategory({
         name: data.categoryName
       })
@@ -198,14 +215,15 @@ module.exports = {
         return responseStandard(res, 'internal server error', {}, 500, false)
       }
       Object.assign(data, { id: item_id })
-      if (imgData) {
+      if (Object.keys(imgData).length) {
+        console.log('masuk imgData')
         Object.assign(imgData, { item_id })
         await itemImages.updateImage(imgData, { item_id })
       }
       const detailResults = []
       if (detailArr.length) {
         const detailValueArr = []
-        const detailKeyArr = [0]
+        let detailKeyArr = []
         // insert item detail
         console.log(detailArr)
         const { detailArr: detailArrParse } = qs.parse(detailArr)
@@ -216,7 +234,10 @@ module.exports = {
             id: joi.number().integer().required(),
             colorName: joi.string().required(),
             hex: joi.string().pattern(new RegExp(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/i)).required(),
-            available: joi.boolean().required()
+            available: [
+              joi.boolean().required(),
+              joi.number().required()
+            ]
           })
           const { value: data, error } = schema.validate(detail)
           if (error) {
@@ -224,8 +245,6 @@ module.exports = {
             console.log(error)
             return responseStandard(res, error.message, {}, 400, false)
           }
-
-          const available = data.available ? 1 : 0
 
           // search or create new color in color table
           const { results } = await colorModel.searchOrCreateColor({
@@ -240,7 +259,7 @@ module.exports = {
             id: data.id,
             item_id: item_id,
             color_id,
-            available
+            available: data.available
           }
 
           // create object for detail data
@@ -248,7 +267,10 @@ module.exports = {
             id: joi.number().integer().required(),
             item_id: joi.number().required(),
             color_id: joi.number().required(),
-            available: joi.number().required()
+            available: [
+              joi.boolean().required(),
+              joi.number().required()
+            ]
           })
           const { value: dataDetail, err } = schemaDetail.validate(itemDetailObj)
           if (err) {
@@ -258,9 +280,10 @@ module.exports = {
           }
           console.log(dataDetail.available)
           detailResults.push(dataDetail)
-          detailKeyArr[0] = Object.keys(dataDetail)
           detailValueArr.push(Object.values(dataDetail))
+          detailKeyArr = Object.keys(dataDetail)
         }
+        console.log(detailKeyArr)
         const createItemDetail = await itemDetailModel.updateAndInsert(detailKeyArr, detailValueArr)
         console.log('this is createItemDetail')
         console.log(createItemDetail)
@@ -281,11 +304,14 @@ module.exports = {
     const { id: seller_id } = req.user
     const { id } = req.params
     try {
-      const { results, count } = await itemModel.getItemByCondition({ id, seller_id })
+      const { count } = await itemModel.getItemByCondition({ id, seller_id })
       if (!count) {
         return responseStandard(res, 'item not found!', {}, 400, false)
       }
-      await itemModel.deleteItem(results[0])
+      const deleteItem = await itemModel.deleteItem({ id, seller_id })
+      if (!deleteItem.affectedRows) {
+        return responseStandard(res, 'fail to delete item', 400, false)
+      }
       return responseStandard(res, 'success delete id: ' + id, {})
     } catch (err) {
       console.log(err)

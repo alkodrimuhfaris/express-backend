@@ -47,13 +47,12 @@ module.exports = {
   },
   getCheckout: async (req, res) => {
     const { id: user_id } = req.user
-    if (!user_id) { return responseStandard(res, 'Forbidden Access!', {}, 403, false) }
     try {
       const carts = joi.object({
         itemdetails_id: joi.array().items(joi.number().required()),
         quantity: joi.array().items(joi.number().required()),
-        couriers: joi.array().items(joi.string()),
-        services: joi.array().items(joi.number()),
+        couriers: joi.array().items(joi.string().allow(null, '', 0)),
+        services: joi.array().items(joi.number().allow(null, '', 0)),
         address_id: joi.number()
       })
       const { value: checkoutData, error } = carts.validate(req.body)
@@ -84,9 +83,9 @@ module.exports = {
       const checkoutArr = arrayCheckout(sellerArr, itemsArr)
 
       for (const [index, item] of checkoutArr.entries()) {
-        const courier = couriers ? couriers[index] : ''
+        const courier = couriers ? couriers.length ? couriers[index] : '' : ''
 
-        const service = services ? services[index] : 0
+        const service = services ? services.length ? services[index] - 1 : 0 : 0
 
         const { destination, weight, origin } = item
 
@@ -98,7 +97,7 @@ module.exports = {
           )
           const { results } = data.rajaongkir
           console.log(results)
-          const { service: service_name, cost } = results[0].costs[service]
+          const { service: service_name, cost } = results[service].costs[service]
           const [{ value: delivery_fee }] = cost
           checkoutArr[index].delivery_fee = delivery_fee
           checkoutArr[index].courier = courier
@@ -188,50 +187,60 @@ module.exports = {
   },
   getDeliveryFee: async (req, res) => {
     const { id: user_id } = req.user
-    if (!user_id) {
-      return responseStandard(res, 'Forbidden Access!', {}, 403, false)
-    }
-
-    let { seller_id, address_id, weight } = req.query
-    seller_id = Number(seller_id)
-    weight = Number(weight)
-    if (!seller_id || !weight) {
-      return responseStandard(res, 'Seller id and weight must be defined as number!', {}, 400, false)
-    }
-
-    address_id = Number(address_id) ? Number(address_id) : 0
-
     try {
-      // get origin
-      const [{ city_id: origin }] = await addressModel.getCityId({ user_id: seller_id })
+      const { dataBooking } = req.query
+      const deliveryData = []
+      for (const data of dataBooking) {
+        let { seller_id, address_id, itemdetails_id, quantity } = data
+        let weight = 0
 
-      // get destination
-      const [{ city_id: destination }] = address_id
-        ? await addressModel.getCityId({ user_id }, { id: address_id })
-        : await addressModel.getCityId({ user_id })
-
-      const couriers = ['jne', 'pos', 'tiki']
-
-      const delivery_couriers = []
-      for (const el of couriers) {
-        const { data } = await axios.post(process.env.URL_RAJAONGKIR_COST,
-          { destination, origin, weight, courier: el },
-          { headers: { key: process.env.API_KEY_RAJAONGKIR } }
-        )
-        const { results } = data.rajaongkir
-        const [{ costs, code: courier }] = results
-        const detailService = []
-        console.log(costs)
-        for (const [index, item] of costs.entries()) {
-          console.log(item)
-          const { cost: detailCosts, service } = item
-          console.log(detailCosts)
-          const [{ value: price, etd }] = detailCosts
-          detailService.push({ service_id: index, service, price, etd })
+        for (const [index, itemDetailsId] of itemdetails_id.entries()) {
+          // get item detail
+          const [itemDetail] = await itemModel.getBookingItem(itemDetailsId)
+          const { weight: itemWeight } = itemDetail
+          weight += (itemWeight * quantity[index])
         }
-        delivery_couriers.push({ courier, detailService })
+        seller_id = Number(seller_id)
+        weight = Number(weight)
+        if (!seller_id || !weight) {
+          return responseStandard(res, 'Seller id and weight must be defined as number!', {}, 400, false)
+        }
+        address_id = Number(address_id) ? Number(address_id) : 0
+        // get origin
+        const [{ city_id: origin }] = await addressModel.getCityId({ user_id: seller_id })
+
+        // get destination
+        const [{ city_id: destination }] = address_id
+          ? await addressModel.getCityId({ user_id }, { id: address_id })
+          : await addressModel.getCityId({ user_id })
+
+        const couriers = ['jne', 'pos', 'tiki']
+
+        const allDataDelivery = []
+        for (const el of couriers) {
+          const { data } = await axios.post(process.env.URL_RAJAONGKIR_COST,
+            { destination, origin, weight, courier: el },
+            { headers: { key: process.env.API_KEY_RAJAONGKIR } }
+          )
+          const { results } = data.rajaongkir
+          const [{ costs, code: courier }] = results
+          console.log(costs)
+          for (const [index, item] of costs.entries()) {
+            console.log(item)
+            const { cost: detailCosts, service } = item
+            console.log(detailCosts)
+            const [{ value: price, etd }] = detailCosts
+            allDataDelivery.push({ service_id: index, courier, service, price, etd })
+          }
+        }
+        const delivery = {
+          seller_id,
+          dataDelivery: allDataDelivery
+        }
+
+        deliveryData.push(delivery)
       }
-      return responseStandard(res, 'Delivery fee', { delivery_couriers })
+      return responseStandard(res, 'Delivery fee', { results: deliveryData })
     } catch (err) {
       console.log(err)
       return responseStandard(res, err.message, {}, 400, false)

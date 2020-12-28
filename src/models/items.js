@@ -39,7 +39,15 @@ module.exports = {
     return await getFromDB(query, prepStatement)
   },
   getItem: async (id, tables = table) => {
-    query = `SELECT * FROM ${tables} WHERE id = ?`
+    query = `SELECT * FROM ${tables}
+            LEFT JOIN (
+              SELECT item_id, product_image_1,
+              product_image_2, product_image_3,
+              product_image_4
+              FROM item_images
+            ) AS item_images
+            ON ${tables}.id = item_images.item_id
+            WHERE id = ?`
     return await getFromDB(query, id)
   },
   getByQuery: async (tables = table, id, data) => {

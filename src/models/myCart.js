@@ -12,10 +12,10 @@ FROM
     carts.id as id, carts.user_id as user_id, carts.seller_id as seller_id,
     carts.item_id as item_id, carts.itemdetails_id, carts.quantity as quantity, created_at,
     updated_at, name, product_image_1, product_image_2, product_image_3,
-    product_image_4, store_name, color_name, color_hex
+    product_image_4, store_name, color_name, color_hex, price
   FROM carts
   LEFT JOIN (
-    SELECT id as item_id, name
+    SELECT id as item_id, name, price
     FROM items
   ) AS items
   ON carts.item_id = items.item_id
@@ -41,11 +41,11 @@ FROM
   ON carts.itemdetails_id = item_details.itemdetails_id
 ) AS cartTable`
 
-const selectArg = `
-carts.id as id, carts.user_id as user_id, carts.seller_id as seller_id,
-carts.item_id as item_id, carts.itemdetails_id, carts.quantity as quantity, created_at,
-updated_at, name, product_image_1, product_image_2, product_image_3,
-product_image_4, store_name, color_name, color_hex`
+// const selectArg = `
+// carts.id as id, carts.user_id as user_id, carts.seller_id as seller_id,
+// carts.item_id as item_id, carts.itemdetails_id, carts.quantity as quantity, created_at,
+// updated_at, name, product_image_1, product_image_2, product_image_3,
+// product_image_4, store_name, color_name, color_hex`
 
 module.exports = {
   addToCart: async (data, tables = table) => {
@@ -139,5 +139,17 @@ module.exports = {
     const [{ count }] = await getFromDB(query, prepStatement)
 
     return { results, count }
+  },
+  bulkDelete: async (data = [{}], tables = table) => {
+    const whereData = Object.keys(data[0])
+    const inData = []
+    for (const delData of data) {
+      const valData = Object.values(delData)
+      inData.push(valData)
+    }
+    console.log(inData)
+    query = `DELETE FROM ${tables} WHERE (${whereData}) IN ?`
+
+    return getFromDB(query, [[inData]])
   }
 }

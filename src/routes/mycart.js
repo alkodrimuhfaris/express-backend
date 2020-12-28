@@ -6,7 +6,9 @@ const router = Router()
 
 router.post('/', mycart.createMyCart)
 router.get('/', mycart.viewMycart)
-router.put('/:id', roleChecker.paramsNumber, mycart.updateMyCart)
+router.patch('/:id', roleChecker.paramsNumber, mycart.updateMyCart)
+
+router.delete('/bulk', mycart.deleteMyCartBulk)
 router.delete('/items/:id', roleChecker.paramsNumber, mycart.deleteMyCartByItemId)
 router.delete('/details/:id', roleChecker.paramsNumber, mycart.deleteMyCartById)
 

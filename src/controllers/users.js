@@ -31,9 +31,12 @@ module.exports = {
   updateUser: async (req, res) => {
     const { id: user_id, role_id } = req.user
     const avatar = req.file ? 'Uploads/' + req.file.filename : null
-    const [userCredential, userDetail] = await userValidate(req.body, role_id, 'patch')
-    avatar && Object.assign(userDetail, { avatar })
+    if (req.body.avatar) {
+      delete req.body.avatar
+    }
     try {
+      const [userCredential, userDetail] = await userValidate(req.body, role_id, 'patch')
+      avatar && Object.assign(userDetail, { avatar })
       await users.updateUser(userCredential, { id: user_id })
       await userDetails.updateUserDetails(userDetail, { user_id })
       return response(res, 'success update profile', { data: { ...userCredential, ...userDetail } })
@@ -61,6 +64,7 @@ module.exports = {
       return response(res, 'success get account', { results: result })
     } catch (err) {
       console.log(err)
+      console.log('error goes here')
       return response(res, err.message, {}, 500, false)
     }
   },
@@ -124,6 +128,19 @@ module.exports = {
         return response(res, 'Update password failed!', {}, 500, false)
       }
       return response(res, 'Password updated!', {}, 200, true)
+    } catch (err) {
+      console.log(err)
+      return response(res, err.message, {}, 500, false)
+    }
+  },
+  deleteAvatar: async (req, res) => {
+    const { id: user_id } = req.user
+    const delAva = await users.updateUser({ avatar: null }, { user_id }, 'user_details')
+    try {
+      if (!delAva.affectedRows) {
+        return response(res, 'Delete avatar failed!', {}, 500, false)
+      }
+      return response(res, 'Success delete avatar!', {})
     } catch (err) {
       console.log(err)
       return response(res, err.message, {}, 500, false)

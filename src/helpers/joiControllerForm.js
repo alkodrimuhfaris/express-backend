@@ -64,14 +64,19 @@ module.exports = {
         birthdate: joi.string(),
         bio: joi.string(),
         gender: joi.string(),
-        phone: joi.string()
+        // eslint-disable-next-line no-useless-escape
+        phone: joi.string().regex(/^(?:(?:\(?(?:00|\+)([1-4]\d\d|[1-9]\d?)\)?)?[\-\.\ \\\/]?)?((?:\(?\d{1,}\)?[\-\.\ \\\/]?){0,})(?:[\-\.\ \\\/]?(?:#|ext\.?|extension|x)[\-\.\ \\\/]?(\d+))?$/i)
       }
     } else if (role === 3) {
       console.log('were in seller path')
       userDetails = {
+        birthdate: joi.string(),
+        bio: joi.string(),
+        gender: joi.string(),
         store_description: joi.string(),
         store_name: joi.string().required(),
-        phone: joi.string().required()
+        // eslint-disable-next-line no-useless-escape
+        phone: joi.string().regex(/^(?:(?:\(?(?:00|\+)([1-4]\d\d|[1-9]\d?)\)?)?[\-\.\ \\\/]?)?((?:\(?\d{1,}\)?[\-\.\ \\\/]?){0,})(?:[\-\.\ \\\/]?(?:#|ext\.?|extension|x)[\-\.\ \\\/]?(\d+))?$/i).required()
       }
     } else {
       console.log('role is wrong')
@@ -94,20 +99,20 @@ module.exports = {
     password && (password = await bcrypt.hash(password, 10))
     return sanitizeForm([{ name, username, email, password }, user_details], requires)
   },
-  userAddress: (body, requires = 'create') => {
+  userAddress: async (body, requires = 'create') => {
     let address = {
       address_name: joi.string(),
       recipient_name: joi.string(),
-      phone: joi.number().required(),
+      // eslint-disable-next-line no-useless-escape
+      phone: joi.string().regex(/^(?:(?:\(?(?:00|\+)([1-4]\d\d|[1-9]\d?)\)?)?[\-\.\ \\\/]?)?((?:\(?\d{1,}\)?[\-\.\ \\\/]?){0,})(?:[\-\.\ \\\/]?(?:#|ext\.?|extension|x)[\-\.\ \\\/]?(\d+))?$/i).required(),
       address: joi.string().required(),
       city_id: joi.number().required(),
       province_id: joi.number().required(),
-      postal_code: joi.number().required(),
-      primary_address: joi.boolean().required()
+      postal_code: joi.string().required(),
+      primary_address: joi.bool().required()
     }
 
-    console.log(body)
-
+    console.log(body.primary_address)
     address = requiring(requires, address)
 
     const { value: data, error } = address.validate(body)

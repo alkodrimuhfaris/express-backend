@@ -27,11 +27,11 @@ module.exports = {
       const { results: getRes, count } = await myCart.getCart({ user_id, item_id, itemdetails_id })
       console.log(getRes)
       if (count) {
-        const update = await myCart.updateCart(data, getRes[0])
+        const update = await myCart.updateCart(data, { user_id, item_id, itemdetails_id })
         if (update.affectedRows) {
           return responseStandard(res, 'cart has been updated!', { results: data })
         } else {
-          return responseStandard(res, 'Internal server error', 500, false)
+          return responseStandard(res, 'Internal server error', {}, 500, false)
         }
       }
       Object.assign(data, { user_id: user_id, seller_id })
@@ -108,6 +108,42 @@ module.exports = {
         return responseStandard(res, 'Error deleting cart', {}, 400, false)
       }
       return responseStandard(res, 'Success delete cart', {})
+    } catch (err) {
+      console.log(err)
+      return responseStandard(res, err.message, {}, 500, false)
+    }
+  },
+  deleteMyCartBulk: async (req, res) => {
+    const { id: user_id } = req.user
+    try {
+      const { deleteArr } = req.query
+      console.log(deleteArr)
+      const itemDel = joi.object().keys({
+        id: joi.number().required()
+      })
+
+      const arrDel = joi.array().items(itemDel)
+
+      const { value: data, error } = arrDel.validate(
+        deleteArr
+      )
+      if (error) {
+        return responseStandard(res, error.message, {}, 400, false)
+      }
+      const delData = []
+      for (let item of data) {
+        item = {
+          ...item,
+          user_id
+        }
+        delData.push(item)
+      }
+      console.log(delData)
+      const deleteResult = await myCart.bulkDelete(delData)
+      if (!deleteResult.affectedRows) {
+        return responseStandard(res, 'Internal Server Error', {}, 500, false)
+      }
+      return responseStandard(res, 'Success delete items', {})
     } catch (err) {
       console.log(err)
       return responseStandard(res, err.message, {}, 500, false)

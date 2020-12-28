@@ -11,6 +11,7 @@ router.get('admin/all', roleChecker.admin, user.viewAllUsers)
 // user
 router.post('/balance/topup', user.topUpBalance)
 router.patch('/', multerSingle('avatar'), user.updateUser)
+router.delete('/avatar', user.deleteAvatar)
 router.delete('/', user.deleteUser)
 router.get('/', user.getUser)
 router.post('/password', user.changePassword)
