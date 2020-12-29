@@ -230,7 +230,7 @@ module.exports = {
             const { cost: detailCosts, service } = item
             console.log(detailCosts)
             const [{ value: price, etd }] = detailCosts
-            allDataDelivery.push({ service_id: index, courier, service, price, etd })
+            allDataDelivery.push({ service_id: index + 1, courier, service, price, etd })
           }
         }
         const delivery = {
