@@ -288,9 +288,9 @@ module.exports = {
       const checkoutArr = arrayCheckout(sellerArr, itemsArr)
 
       for (const [index, item] of checkoutArr.entries()) {
-        const courier = couriers ? couriers[index] : ''
+        const courier = couriers ? couriers.length ? couriers[index] : '' : ''
 
-        const service = services ? services[index] : 0
+        const service = services ? services.length ? services[index] - 1 : 0 : 0
 
         const { destination, weight, origin } = item
 
@@ -298,10 +298,11 @@ module.exports = {
         if (courier) {
           const { data } = await axios.post(process.env.URL_RAJAONGKIR_COST,
             { destination, origin, weight, courier },
-            { headers: { key: process.env.API_KEY_RAJAONGKIR } })
+            { headers: { key: process.env.API_KEY_RAJAONGKIR } }
+          )
           const { results } = data.rajaongkir
           console.log(results)
-          const { service: service_name, cost } = results[0].costs[service]
+          const { service: service_name, cost } = results[service].costs[service]
           const [{ value: delivery_fee }] = cost
           checkoutArr[index].delivery_fee = delivery_fee
           checkoutArr[index].courier = courier
