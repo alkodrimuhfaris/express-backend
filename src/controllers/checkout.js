@@ -188,7 +188,7 @@ module.exports = {
   getDeliveryFee: async (req, res) => {
     const { id: user_id } = req.user
     try {
-      const { dataBooking, address_id } = req.query
+      let { dataBooking, address_id } = req.query
       const deliveryData = []
       for (const data of dataBooking) {
         let { seller_id, itemdetails_id, quantity } = data
