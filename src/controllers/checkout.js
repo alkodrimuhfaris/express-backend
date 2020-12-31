@@ -97,7 +97,7 @@ module.exports = {
           )
           const { results } = data.rajaongkir
           console.log(results)
-          const { service: service_name, cost } = results[service].costs[service]
+          const { service: service_name, cost } = results[0].costs[service]
           const [{ value: delivery_fee }] = cost
           checkoutArr[index].delivery_fee = delivery_fee
           checkoutArr[index].courier = courier
@@ -302,7 +302,7 @@ module.exports = {
           )
           const { results } = data.rajaongkir
           console.log(results)
-          const { service: service_name, cost } = results[service].costs[service]
+          const { service: service_name, cost } = results[0].costs[service]
           const [{ value: delivery_fee }] = cost
           checkoutArr[index].delivery_fee = delivery_fee
           checkoutArr[index].courier = courier
@@ -316,8 +316,8 @@ module.exports = {
       }
 
       const { results } = address_id
-        ? await addressModel.getAddress({ user_id }, { id: address_id })
-        : await addressModel.getAddress({ user_id })
+        ? await addressModel.getAddress({ user_id }, { id: address_id }, {})
+        : await addressModel.getAddress({ user_id }, {})
       let [{ address, city_type, city, postal_code }] = results
       address = `${address}, ${city_type} ${city}, postal code: ${postal_code}`
 
@@ -449,11 +449,11 @@ module.exports = {
 
       if (user_id !== id) { return responseStandard(res, 'Forbidden Access!', {}, 403, false) }
 
-      let [{ balance }] = await usersModel.getUserBalance({ id })
+      let [{ balance }] = await usersModel.getuser({ id })
       if (total_price > balance) { return responseStandard(res, 'balance is not enough please top-up your balance!', {}, 403, false) }
 
       balance = balance - total_price
-      await usersModel.updateBalance({ id }, { balance })
+      await usersModel.updateUser({ balance }, { id })
       await transactionModel.updateStatus({ id: transaction_id }, 1)
 
       return responseStandard(res, 'payment on id ' + transaction_id + ' success!')

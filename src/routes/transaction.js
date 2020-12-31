@@ -6,7 +6,7 @@ const roleChecker = require('../middlewares/roleChecker')
 const router = Router()
 
 router.get('/all', controllerTransaction.getAllTransaction)
-router.get('/all/:id', roleChecker.paramsNumber, controllerTransaction.getTransactionById)
+router.get('/all/:id', roleChecker.paramsNumber, controllerTransaction.detailTransaction)
 router.get('/detail', controllerTransaction.getAllDetailTransaction)
 router.get('/detail/:id', roleChecker.paramsNumber, controllerTransaction.getDetailTransactionById)
 router.get('/merchant/all/:id', roleChecker.paramsNumber, controllerTransaction.getAllMerchantTransactionById)

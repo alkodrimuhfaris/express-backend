@@ -43,14 +43,36 @@ module.exports = {
             WHERE ?`
     return await getFromDB(query, [status, id])
   },
-  getAllTransaction: async (req, user_id = {}, tables = table) => {
-    const { limiter } = pagination.pagePrep(req)
+  getAllTransaction: async (reqQuery, whereData, tables = table) => {
+    let { data } = reqQuery
+    data = { ...data, ...whereData }
+    console.log(data)
+    const { searchArr, date, orderArr, dataArr, prepStatement } = queryGenerator({ ...reqQuery, data })
+
+    // query for search and limit
+    const additionalQuery = [searchArr, date, dataArr].filter(item => item).map(item => `(${item})`).join(' AND ')
+
+    // query for where (if it exist)
+    const where = additionalQuery ? ' WHERE ' : ''
+
+    const { limiter } = pagination.pagePrep(reqQuery)
+
+    console.log(additionalQuery)
+    console.log(prepStatement)
 
     query = `SELECT * FROM ${tables}
-            WHERE ?
-            ORDER BY created_at DESC
+            ${where}
+            ${additionalQuery}
+            ORDER BY ${orderArr}
             ${limiter}`
-    return await getFromDB(query, user_id)
+    const results = await getFromDB(query, prepStatement)
+
+    query = `SELECT count(*) as count FROM ${tables}
+            ${where}
+            ${additionalQuery}`
+    const [{ count }] = await getFromDB(query, prepStatement)
+
+    return { results, count }
   },
   countAllTransaction: async (user_id = {}, tables = table) => {
     query = `SELECT count(*) as count FROM ${tables}
@@ -182,5 +204,36 @@ module.exports = {
             ${where}
             ${additionalQuery}`
     return await getFromDB(query, prepStatement)
+  },
+  transactionDetail: async (whereData = {}, reqQuery, tables = table) => {
+    let { data } = reqQuery
+    data = { ...data, ...whereData }
+    console.log(data)
+    const { searchArr, date, orderArr, dataArr, prepStatement } = queryGenerator({ ...reqQuery, data })
+
+    // query for search and limit
+    const additionalQuery = [searchArr, date, dataArr].filter(item => item).map(item => `(${item})`).join(' AND ')
+
+    // query for where (if it exist)
+    const where = additionalQuery ? ' WHERE ' : ''
+
+    const { limiter } = pagination.pagePrep(reqQuery)
+
+    console.log(additionalQuery)
+    console.log(prepStatement)
+
+    query = `SELECT * FROM ${tables}
+            ${where}
+            ${additionalQuery}
+            ORDER BY ${orderArr}
+            ${limiter}`
+    const results = await getFromDB(query, prepStatement)
+
+    query = `SELECT count(*) as count FROM ${tables}
+            ${where}
+            ${additionalQuery}`
+    const [{ count }] = await getFromDB(query, prepStatement)
+
+    return { results, count }
   }
 }

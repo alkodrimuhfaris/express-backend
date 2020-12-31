@@ -14,13 +14,12 @@ module.exports = {
     const path = 'transaction'
     if (!user_id) { return responseStandard(res, 'Forbidden Access!', {}, 403, false) }
     try {
-      const transaction = await transactionModel.getAllTransaction(req, { user_id })
-      const [{ count }] = await transactionModel.countAllTransaction({ user_id }) || 0
+      const { results, count } = await transactionModel.getAllTransaction(req.query, { user_id })
       const pageInfo = pagination.paging(count, page, limit, path, req)
-      if (transaction.length) {
-        return responseStandard(res, 'All transaction', { transaction, pageInfo })
+      if (count) {
+        return responseStandard(res, 'All transaction', { results, pageInfo })
       } else {
-        return responseStandard(res, 'There is no item in the list', { pageInfo })
+        return responseStandard(res, 'There is no item in the list', { results, pageInfo })
       }
     } catch (err) {
       console.log(err)
@@ -53,7 +52,7 @@ module.exports = {
     try {
       const transaction = await transactionModel.getTransactionId(user_id, id)
       if (transaction.length) {
-        return responseStandard(res, 'Transaction on id ' + id, { transaction })
+        return responseStandard(res, 'Transaction on id ' + id, { results: transaction })
       } else {
         return responseStandard(res, 'There is no item in the list')
       }
@@ -239,6 +238,39 @@ module.exports = {
         return responseStandard(res, 'wrong id!', {}, 400, false)
       }
       return responseStandard(res, 'success to delete transaction details!', {})
+    } catch (error) {
+      console.log(error)
+      return responseStandard(res, error.message, {}, 400, false)
+    }
+  },
+  detailTransaction: async (req, res) => {
+    const table = 'transaction_total'
+    const table2 = 'transaction_merchant'
+    const table3 = 'transaction_details'
+    const { id } = req.params
+    Object.assign(req.query, { limit: '-', page: 1 })
+    try {
+      const { results, count } = await transactionModel.transactionDetail({ id }, req.query, table)
+      const [transactionTotal] = results
+      if (!count) {
+        return responseStandard(res, 'transaction id is not found!', {}, 400, false)
+      }
+      const { results: transaction_merchant, count: merchantCount } = await transactionModel.transactionDetail({ transaction_total_id: id }, req.query, table2)
+      if (!merchantCount) {
+        return responseStandard(res, 'transaction merchant is not found!', {}, 400, false)
+      }
+      const transactionMerchants = []
+      for (const transactionMerchant of transaction_merchant) {
+        const { id } = transactionMerchant
+        const { results: transactionDetails, count: detailCount } = await transactionModel.transactionDetail({ transaction_merchant_id: id }, req.query, table3)
+        if (!detailCount) {
+          return responseStandard(res, 'transaction detail is not found!', {}, 400, false)
+        }
+        Object.assign(transactionMerchant, { transactionDetails })
+        transactionMerchants.push(transactionMerchant)
+      }
+      Object.assign(transactionTotal, { transactionMerchants })
+      return responseStandard(res, 'Get transaction detail successfull', { results: transactionTotal })
     } catch (error) {
       console.log(error)
       return responseStandard(res, error.message, {}, 400, false)
