@@ -37,8 +37,12 @@ module.exports = {
     try {
       const [userCredential, userDetail] = await userValidate(req.body, role_id, 'patch')
       avatar && Object.assign(userDetail, { avatar })
-      await users.updateUser(userCredential, { id: user_id })
-      await userDetails.updateUserDetails(userDetail, { user_id })
+      if (Object.keys(userCredential).length) {
+        await users.updateUser(userCredential, { id: user_id })
+      }
+      if (Object.keys(userDetail).length) {
+        await userDetails.updateUserDetails(userDetail, { user_id })
+      }
       return response(res, 'success update profile', { data: { ...userCredential, ...userDetail } })
     } catch (err) {
       console.log(err)
