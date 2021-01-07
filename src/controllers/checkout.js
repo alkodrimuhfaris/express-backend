@@ -316,7 +316,7 @@ module.exports = {
       }
 
       const { results } = address_id
-        ? await addressModel.getAddress({ user_id }, { id: address_id }, {})
+        ? await addressModel.getAddress({ user_id, id: address_id }, {})
         : await addressModel.getAddress({ user_id }, {})
       let [{ address, city_type, city, postal_code }] = results
       address = `${address}, ${city_type} ${city}, postal code: ${postal_code}`
