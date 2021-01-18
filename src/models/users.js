@@ -85,10 +85,7 @@ module.exports = {
             ) AS user_details
             ON ${tables}.id = user_details.user_id
             ${where}
-            ${additionalQuery}
-            ORDER BY
-              ${orderArr}
-            ${limiter}`
+            ${additionalQuery}`
 
     const [{ count }] = await getFromDB(query, prepStatement)
 
