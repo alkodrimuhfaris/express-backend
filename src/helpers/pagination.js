@@ -1,4 +1,4 @@
-const stringify = require('./stringifyObj')
+const qs = require('qs')
 
 module.exports = {
   paging: (count = 0, page = 1, limit = 5, tables, req) => {
@@ -13,10 +13,10 @@ module.exports = {
     let nextLink = null
     let prefLink = null
     if (page < pages) {
-      nextLink = process.env.APP_URL + tables + '?' + stringify({ ...req.query, ...{ page: page + 1 } })
+      nextLink = process.env.APP_URL + tables + '?' + qs.stringify({ ...req.query, ...{ page: page + 1 } })
     }
     if (page > 1) {
-      prefLink = process.env.APP_URL + tables + '?' + stringify({ ...req.query, ...{ page: page - 1 } })
+      prefLink = process.env.APP_URL + tables + '?' + qs.stringify({ ...req.query, ...{ page: page - 1 } })
     }
     const pageInfo = {
       count: count,
